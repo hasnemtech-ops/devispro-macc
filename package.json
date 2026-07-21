@@ -1,0 +1,48 @@
+{
+  "name": "devis-pro",
+  "version": "1.0.0",
+  "description": "Devis Pro - application de devis hors-ligne",
+  "main": "main.js",
+  "author": "Votre entreprise",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --x64 --ia32",
+    "dist:mac": "electron-builder --mac",
+    "dist": "electron-builder -mw"
+  },
+  "devDependencies": {
+    "electron": "22.3.27",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.devispro.app",
+    "productName": "Devis Pro",
+    "asar": true,
+    "publish": null,
+    "files": [
+      "main.js",
+      "electricien-devis.html",
+      "icon.png"
+    ],
+    "icon": "icon.png",
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["ia32"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "category": "public.app-category.business"
+    }
+  }
+}
