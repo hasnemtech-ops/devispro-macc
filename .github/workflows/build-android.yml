@@ -1,0 +1,56 @@
+name: Build Android (.apk) — CO otr
+
+# Se lance automatiquement à chaque envoi de code sur "main",
+# et peut aussi être lancé manuellement depuis l'onglet "Actions" de GitHub.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'co-otr-cfe/**'
+      - '.github/workflows/build-android.yml'
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Installer le SDK Android
+        uses: android-actions/setup-android@v3
+
+      - name: Installer les dépendances (Capacitor)
+        working-directory: co-otr-cfe
+        run: npm install
+
+      - name: Synchroniser le projet Android
+        working-directory: co-otr-cfe
+        run: npx cap sync android
+
+      - name: Rendre gradlew exécutable
+        working-directory: co-otr-cfe/android
+        run: chmod +x gradlew
+
+      - name: Compiler l'APK (debug, installable directement)
+        working-directory: co-otr-cfe/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Publier l'APK en téléchargement
+        uses: actions/upload-artifact@v4
+        with:
+          name: CO-otr-Android-apk
+          path: co-otr-cfe/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

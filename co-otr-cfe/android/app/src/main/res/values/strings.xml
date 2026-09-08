@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CO otr</string>
+    <string name="title_activity_main">CO otr</string>
+    <string name="package_name">com.cootr.cfetogo</string>
+    <string name="custom_url_scheme">com.cootr.cfetogo</string>
+</resources>

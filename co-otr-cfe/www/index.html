@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>CO otr — Calcul CFE Togo</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#10233A">
+<link rel="icon" type="image/png" href="icon.png">
+<style>
+  :root{
+    --navy:#10233A;
+    --navy-2:#1B3A5C;
+    --amber:#F5B93D;
+    --amber-dark:#D99A1B;
+    --bg:#F5F7FA;
+    --surface:#FFFFFF;
+    --text:#16212E;
+    --muted:#5B6B7C;
+    --success:#2E8B57;
+    --danger:#C4432B;
+    --border:#E1E5EA;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    padding-bottom:40px;
+  }
+  h1,h2,h3{font-family:inherit;letter-spacing:-0.01em;margin:0;}
+  .app-header{
+    background:var(--navy);
+    color:#fff;
+    padding:18px 16px 14px;
+    position:sticky;top:0;z-index:20;
+  }
+  .app-header .brand{
+    display:flex;align-items:center;gap:12px;
+  }
+  .logo-badge{
+    width:44px;height:44px;flex:none;border-radius:11px;
+    background:linear-gradient(160deg,var(--navy-2),var(--navy));
+    border:1px solid rgba(245,185,61,.5);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .logo-badge .co{
+    font-weight:800;font-size:17px;color:var(--amber);letter-spacing:-0.03em;position:relative;
+  }
+  .logo-badge .co sup{
+    font-size:8px;font-weight:700;color:#fff;top:-11px;left:1px;
+  }
+  .app-header h1{font-size:19px;font-weight:700;}
+  .app-header h1 sup{font-size:11px;font-weight:700;color:var(--amber);margin-left:1px;}
+  .app-header .sub{font-size:12px;color:#B9C6D6;margin-top:2px;}
+  .circuit-rule{
+    height:2px;background:linear-gradient(90deg,var(--amber),transparent 85%);
+    margin-top:12px;border-radius:2px;
+  }
+  nav.tabs{
+    display:flex;background:var(--surface);border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:19;
+  }
+  nav.tabs button{
+    flex:1;padding:12px 4px;border:none;background:none;font-size:13.5px;font-weight:600;
+    color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;
+  }
+  nav.tabs button.active{color:var(--navy);border-bottom-color:var(--amber);}
+  main{padding:16px;max-width:640px;margin:0 auto;}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:16px;margin-bottom:14px;
+  }
+  .card h2{font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--navy-2);margin-bottom:12px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px;}
+  input[type=number]{
+    width:100%;padding:12px 12px;border:1px solid var(--border);border-radius:8px;
+    font-size:17px;background:#fff;color:var(--text);font-family:inherit;font-weight:600;
+  }
+  input:focus{outline:2px solid var(--amber);outline-offset:0;border-color:var(--amber-dark);}
+  .regime-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .regime-opt{
+    border:1.5px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center;
+    cursor:pointer;background:#fff;transition:.15s;
+  }
+  .regime-opt input{position:absolute;opacity:0;pointer-events:none;}
+  .regime-opt .lbl{display:block;font-size:13.5px;font-weight:700;color:var(--navy);}
+  .regime-opt .sub{display:block;font-size:11px;color:var(--muted);margin-top:2px;}
+  .regime-opt.selected{border-color:var(--amber-dark);background:#FFF8E8;box-shadow:0 0 0 1px var(--amber-dark) inset;}
+  .result-line{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:10px 0;border-bottom:1px solid var(--border);gap:10px;
+  }
+  .result-line:last-of-type{border-bottom:none;}
+  .result-line .name{font-size:13.5px;color:var(--text);}
+  .result-line .formula{display:block;font-size:11px;color:var(--muted);margin-top:1px;}
+  .result-line .val{font-weight:700;font-size:14.5px;color:var(--navy);white-space:nowrap;}
+  .total-line{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--navy);color:#fff;border-radius:10px;padding:14px 16px;margin-top:12px;
+  }
+  .total-line .name{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#B9C6D6;}
+  .total-line .val{font-size:20px;font-weight:800;color:var(--amber);}
+  .about p{font-size:13.5px;line-height:1.6;color:var(--text);margin:0 0 12px;}
+  .about h3{font-size:13px;color:var(--navy-2);margin-bottom:6px;}
+  .notice{
+    background:#FFF3D9;border:1px solid #F0DBA0;color:#7A5300;border-radius:10px;
+    padding:12px 14px;font-size:12.5px;line-height:1.55;margin-top:14px;
+  }
+  .notice strong{color:#5C3F00;}
+  footer{text-align:center;font-size:11px;color:var(--muted);padding:18px 16px 6px;}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <div class="logo-badge"><span class="co">CO<sup>otr</sup></span></div>
+    <div>
+      <h1>CO<sup>otr</sup></h1>
+      <div class="sub">Calcul des compléments CFE — Togo</div>
+    </div>
+  </div>
+  <div class="circuit-rule"></div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="calcul">Calcul</button>
+  <button data-tab="apropos">À propos</button>
+</nav>
+
+<main>
+
+  <section id="tab-calcul">
+
+    <div class="card">
+      <h2>Régime fiscal</h2>
+      <div class="regime-choice">
+        <label class="regime-opt selected" id="opt-individuelle">
+          <input type="radio" name="regime" value="individuelle" checked>
+          <span class="lbl">Entreprise individuelle</span>
+          <span class="sub">TH = 9 000 FCFA</span>
+        </label>
+        <label class="regime-opt" id="opt-societe">
+          <input type="radio" name="regime" value="societe">
+          <span class="lbl">Société</span>
+          <span class="sub">TH = 30 000 FCFA</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Loyer annuel</h2>
+      <div class="field">
+        <label for="loyer">Montant du loyer annuel (FCFA)</label>
+        <input type="number" id="loyer" inputmode="numeric" min="0" step="1" placeholder="Ex : 1 200 000">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Résultat du calcul</h2>
+      <div class="result-line">
+        <div>
+          <div class="name">RSL</div>
+          <span class="formula">Loyer annuel × 8,75 %</span>
+        </div>
+        <div class="val" id="val-rsl">0 FCFA</div>
+      </div>
+      <div class="result-line">
+        <div>
+          <div class="name">DE</div>
+          <span class="formula">Loyer annuel × 2 %</span>
+        </div>
+        <div class="val" id="val-de">0 FCFA</div>
+      </div>
+      <div class="result-line">
+        <div>
+          <div class="name">TH</div>
+          <span class="formula" id="th-formula">Forfait — entreprise individuelle</span>
+        </div>
+        <div class="val" id="val-th">0 FCFA</div>
+      </div>
+
+      <div class="total-line">
+        <div class="name">Total à régler</div>
+        <div class="val" id="val-total">0 FCFA</div>
+      </div>
+    </div>
+
+    <div class="notice">
+      <strong>NB :</strong> Cette application est fournie à titre instructionnel. Certaines pénalités peuvent être appliquées selon les normes et règlements de l'OTR (Office Togolais des Recettes).
+    </div>
+  </section>
+
+  <section id="tab-apropos" style="display:none;">
+    <div class="card about">
+      <h2>À propos de CO<sup>otr</sup></h2>
+      <p>Cette application est conçue pour aider les contribuables à être conscients des compléments à régler après l'établissement de leur carte CFE (Contribution des Patentes / CFE) au Togo.</p>
+      <p>Toutefois, certaines pénalités peuvent être appliquées selon les normes et règlements de l'OTR (Office Togolais des Recettes).</p>
+      <h3>Formules utilisées</h3>
+      <p>
+        RSL = Loyer annuel × 8,75 %<br>
+        DE = Loyer annuel × 2 %<br>
+        TH = 9 000 FCFA (entreprise individuelle) ou 30 000 FCFA (société)<br>
+        Total = RSL + DE + TH
+      </p>
+      <div class="notice">
+        <strong>NB :</strong> Cette application est à titre instructionnelle. Elle ne se substitue pas à une évaluation officielle de l'OTR. Pour toute démarche officielle, veuillez vous rapprocher des services de l'Office Togolais des Recettes.
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>CO<sup>otr</sup> — Outil instructionnel, hors-ligne. Non affilié à l'OTR.</footer>
+
+<script>
+  const loyerInput = document.getElementById('loyer');
+  const regimeRadios = document.querySelectorAll('input[name="regime"]');
+  const optIndividuelle = document.getElementById('opt-individuelle');
+  const optSociete = document.getElementById('opt-societe');
+  const thFormula = document.getElementById('th-formula');
+
+  const fmt = (n) => Math.round(n).toLocaleString('fr-FR') + ' FCFA';
+
+  function currentTH() {
+    const regime = document.querySelector('input[name="regime"]:checked').value;
+    return regime === 'societe' ? 30000 : 9000;
+  }
+
+  function recalc() {
+    const loyer = parseFloat(loyerInput.value) || 0;
+    const rsl = loyer * 8.75 / 100;
+    const de = loyer * 2 / 100;
+    const th = currentTH();
+    const total = rsl + de + th;
+
+    document.getElementById('val-rsl').textContent = fmt(rsl);
+    document.getElementById('val-de').textContent = fmt(de);
+    document.getElementById('val-th').textContent = fmt(th);
+    document.getElementById('val-total').textContent = fmt(total);
+
+    const regime = document.querySelector('input[name="regime"]:checked').value;
+    thFormula.textContent = regime === 'societe'
+      ? 'Forfait — société'
+      : 'Forfait — entreprise individuelle';
+
+    optIndividuelle.classList.toggle('selected', regime === 'individuelle');
+    optSociete.classList.toggle('selected', regime === 'societe');
+  }
+
+  loyerInput.addEventListener('input', recalc);
+  regimeRadios.forEach(r => r.addEventListener('change', recalc));
+  recalc();
+
+  document.querySelectorAll('nav.tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = btn.dataset.tab;
+      document.getElementById('tab-calcul').style.display = target === 'calcul' ? '' : 'none';
+      document.getElementById('tab-apropos').style.display = target === 'apropos' ? '' : 'none';
+    });
+  });
+</script>
+
+</body>
+</html>
