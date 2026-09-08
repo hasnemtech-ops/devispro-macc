@@ -166,14 +166,14 @@
       <div class="result-line">
         <div>
           <div class="name">RSL</div>
-          <span class="formula">Loyer annuel × 8,75 %</span>
+          <span class="formula">(Loyer annuel × 8,75) / 100</span>
         </div>
         <div class="val" id="val-rsl">0 FCFA</div>
       </div>
       <div class="result-line">
         <div>
           <div class="name">DE</div>
-          <span class="formula">Loyer annuel × 2 %</span>
+          <span class="formula">(Loyer annuel × 2) / 100</span>
         </div>
         <div class="val" id="val-de">0 FCFA</div>
       </div>
@@ -203,8 +203,8 @@
       <p>Toutefois, certaines pénalités peuvent être appliquées selon les normes et règlements de l'OTR (Office Togolais des Recettes).</p>
       <h3>Formules utilisées</h3>
       <p>
-        RSL = Loyer annuel × 8,75 %<br>
-        DE = Loyer annuel × 2 %<br>
+        RSL = (Loyer annuel × 8,75) / 100<br>
+        DE = (Loyer annuel × 2) / 100<br>
         TH = 9 000 FCFA (entreprise individuelle) ou 30 000 FCFA (société)<br>
         Total = RSL + DE + TH
       </p>
@@ -234,8 +234,8 @@
 
   function recalc() {
     const loyer = parseFloat(loyerInput.value) || 0;
-    const rsl = loyer * 8.75 / 100;
-    const de = loyer * 2 / 100;
+    const rsl = (loyer * 8.75) / 100;
+    const de = (loyer * 2) / 100;
     const th = currentTH();
     const total = rsl + de + th;
 

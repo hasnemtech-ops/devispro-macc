@@ -8,8 +8,8 @@ après l'établissement de la carte CFE, packagée avec [Capacitor](https://capa
 1. Choix du régime fiscal : **Entreprise individuelle** ou **Société**
 2. Saisie du **loyer annuel** (FCFA)
 3. Calcul automatique :
-   - `RSL = Loyer annuel × 8,75 %`
-   - `DE  = Loyer annuel × 2 %`
+   - `RSL = (Loyer annuel × 8,75) / 100`
+   - `DE  = (Loyer annuel × 2) / 100`
    - `TH  = 9 000 FCFA` (entreprise individuelle) ou `30 000 FCFA` (société)
    - `Total = RSL + DE + TH`
 
