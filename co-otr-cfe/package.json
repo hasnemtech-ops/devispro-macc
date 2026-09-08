@@ -1,0 +1,17 @@
+{
+  "name": "co-otr-cfe",
+  "version": "1.0.0",
+  "description": "CO otr - Calcul des complements CFE Togo",
+  "private": true,
+  "scripts": {
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.0"
+  }
+}
