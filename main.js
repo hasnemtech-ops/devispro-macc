@@ -15,6 +15,7 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+  win.maximize();   // s'ouvre sur toute la largeur de l'écran
 
   // Les liens externes (ex : WhatsApp) s'ouvrent dans le navigateur/l'app du système,
   // jamais dans la fenêtre de l'application elle-même.

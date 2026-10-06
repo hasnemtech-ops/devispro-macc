@@ -56,7 +56,13 @@
     color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;
   }
   nav.tabs button.active{color:var(--navy);border-bottom-color:var(--amber);}
+  .ent-bar{display:none;align-items:center;gap:8px;padding:8px 16px;background:#EEF2F7;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--muted);}
+  .ent-bar select{flex:1;min-width:0;padding:7px 8px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;color:var(--navy);background:#fff;}
   main{padding:16px;max-width:720px;margin:0 auto;}
+  /* Sur PC / grands écrans : le contenu occupe toute la largeur de la fenêtre */
+  @media (min-width:900px){
+    main{max-width:none;padding:20px 28px;}
+  }
   .card{
     background:var(--surface);border:1px solid var(--border);border-radius:12px;
     padding:16px;margin-bottom:14px;
@@ -72,6 +78,10 @@
   }
   input:focus,select:focus,textarea:focus{outline:2px solid var(--amber);outline-offset:0;border-color:var(--amber-dark);}
   textarea{resize:vertical;min-height:70px;}
+  /* Champs numériques sans flèches haut/bas (Chrome, WebView Android, Electron, Safari, Firefox) */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; appearance:none; margin:0; }
+  input[type=number]{ -moz-appearance:textfield; appearance:textfield; }
   .btn{
     display:inline-flex;align-items:center;justify-content:center;gap:6px;
     padding:11px 16px;border-radius:9px;border:none;font-size:14px;font-weight:700;
@@ -110,7 +120,8 @@
     width:56px;height:56px;border-radius:50%;
     background:var(--amber);color:var(--navy);border:none;
     font-size:28px;font-weight:400;box-shadow:0 6px 16px rgba(16,35,58,.25);
-    cursor:pointer;z-index:25;line-height:0;
+    cursor:pointer;z-index:25;line-height:1;
+    align-items:center;justify-content:center;padding:0 0 3px;
   }
   .modal-overlay{
     position:fixed;inset:0;background:rgba(16,35,58,.5);
@@ -139,7 +150,7 @@
   table.lignes-table tbody tr:nth-child(even){background:#FAFBFC;}
   table.lignes-table .col-desig{width:auto;min-width:180px;}
   table.lignes-table .col-num{width:110px;}
-  table.lignes-table .col-rm{width:34px;}
+  table.lignes-table .col-rm{width:58px;white-space:nowrap;}
   table.lignes-table input{
     width:100%;padding:7px 8px;border:1px solid transparent;border-radius:6px;font-size:14px;
     background:transparent;text-align:left;
@@ -150,6 +161,84 @@
   table.lignes-table .remove-line{
     background:none;border:none;color:var(--danger);font-size:20px;line-height:1;font-weight:700;cursor:pointer;
     padding:4px 6px;
+  }
+  table.lignes-table .insert-line{
+    background:none;border:none;color:var(--amber-dark);font-size:16px;line-height:1;font-weight:700;cursor:pointer;
+    padding:4px 6px;
+  }
+  table.lignes-table td.col-rm{text-align:center;white-space:nowrap;font-size:0;}
+  table.lignes-table tr[data-section] td.col-rm{background:#F5F7FA;}
+  table.lignes-table td.col-rm button{
+    display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
+    width:24px;height:30px;padding:0;margin:0;
+  }
+  table.lignes-table td.col-rm .insert-line{font-size:19px;}
+  table.lignes-table td.col-rm .remove-line{font-size:21px;}
+  table.lignes-table th .court{display:none;}
+  /* ---------- Désignation : un champ d'une seule ligne (pas de poignée, pas d'espace vide) ----------
+     Texte trop long : « … » au repos ; on le fait défiler de gauche à droite en le touchant. */
+  table.lignes-table input.desig-ligne{
+    display:block;width:100%;box-sizing:border-box;height:36px;padding:0 8px;
+    font-size:14px;line-height:34px;white-space:nowrap;overflow-x:auto;text-overflow:ellipsis;
+    border:1px solid transparent;border-radius:6px;background:transparent;
+  }
+  table.lignes-table input.desig-ligne:hover{border-color:var(--border);}
+  table.lignes-table input.desig-ligne:focus{background:#fff;border-color:var(--amber-dark);outline:none;text-overflow:clip;}
+  @media screen and (min-width:641px){
+    table.lignes-table{min-width:0;table-layout:fixed;}
+    table.lignes-table .col-desig{width:auto;}
+    table.lignes-table .col-qte{width:80px;}
+    table.lignes-table .col-pu{width:110px;}
+    table.lignes-table .col-tot{width:130px;}
+    table.lignes-table .col-rm{width:60px;}
+    table.lignes-table td{padding:6px 6px;}
+  }
+  /* PC : colonnes de chiffres plus larges (la pleine largeur de la page est déjà gérée plus haut) */
+  @media screen and (min-width:900px){
+    table.lignes-table .col-qte{width:90px;}
+    table.lignes-table .col-pu{width:130px;}
+    table.lignes-table .col-tot{width:150px;}
+    table.lignes-table .col-rm{width:64px;}
+    table.lignes-table th, table.lignes-table td{font-size:14.5px;}
+    table.lignes-table th{font-size:11.5px;padding:10px 8px;}
+  }
+  /* ---------- Téléphone : même tableau qu'à l'origine, compacté pour tenir dans la largeur ----------
+     Une ligne par article, hauteur fixe, tout aligné au centre ; + et × côte à côte.
+     La désignation est un champ d'une ligne : on fait glisser le texte pour le lire en entier. */
+  @media screen and (max-width:640px){
+    .table-scroll{overflow-x:hidden;}
+    table.lignes-table{min-width:0;width:100%;table-layout:fixed;}
+    table.lignes-table th{padding:7px 3px;font-size:10px;letter-spacing:.02em;}
+    table.lignes-table th.col-qte{text-align:center;}
+    table.lignes-table td{padding:0 2px;height:44px;vertical-align:middle;}
+    table.lignes-table th.col-desig, table.lignes-table td.col-desig{width:auto;min-width:0;padding-left:5px;}
+    table.lignes-table .col-qte{width:32px;}
+    table.lignes-table .col-pu{width:62px;}
+    table.lignes-table .col-tot{width:62px;}
+    table.lignes-table .col-rm{width:44px;}
+    table.lignes-table th .long{display:none;}
+    table.lignes-table th .court{display:inline;}
+    table.lignes-table input{
+      box-sizing:border-box;height:32px;padding:0 2px;font-size:13.5px;line-height:32px;
+      border:1px solid transparent;border-radius:6px;background:transparent;margin:0;
+    }
+    table.lignes-table input.desig-ligne{width:100%;padding:0 5px;text-overflow:ellipsis;}
+    table.lignes-table input.desig-ligne:focus{text-overflow:clip;}
+    table.lignes-table td.col-qte input{text-align:center;}
+    table.lignes-table td.col-pu input{font-size:13px;}
+    table.lignes-table input:focus{background:#fff;border-color:var(--amber-dark);}
+    table.lignes-table .total-cell{font-size:12.5px;padding-right:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    table.lignes-table .total-cell .devise{display:none;}
+    table.lignes-table td.col-section{padding:0 5px !important;}
+    table.lignes-table td.col-section input{height:32px;line-height:32px;padding:0 4px !important;}
+    /* + et × : même taille, côte à côte, centrés sur la ligne */
+    table.lignes-table td.col-rm{padding:0;white-space:nowrap;text-align:center;font-size:0;}
+    table.lignes-table td.col-rm button{
+      display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
+      width:22px;height:30px;padding:0;margin:0;line-height:1;
+    }
+    table.lignes-table td.col-rm .insert-line{font-size:19px;}
+    table.lignes-table td.col-rm .remove-line{font-size:21px;}
   }
   .totals-box{
     background:#F8FAFC;border:1px dashed var(--border);border-radius:10px;padding:12px;margin-top:8px;
@@ -168,24 +257,89 @@
     font-size:12.5px;color:var(--muted);cursor:text;background:#FAFBFC;
   }
   .paste-zone:focus{outline:none;border-color:var(--amber-dark);background:#FFF9EC;}
+
+  /* ---------- Choix des couleurs ---------- */
+  .color-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;font:inherit;color:var(--text);}
+  .color-btn .dots{display:flex;}
+  .color-btn .dots i{width:26px;height:26px;border-radius:50%;display:block;border:2px solid #fff;box-shadow:0 0 0 1px var(--border);}
+  .color-btn .dots i+i{margin-left:-9px;}
+  .color-btn-txt{flex:1;display:flex;flex-direction:column;}
+  .color-btn-txt b{font-size:14.5px;color:var(--navy);}
+  .color-btn-txt small{font-size:12px;color:var(--muted);margin-top:2px;}
+  .color-btn-arrow{font-size:24px;color:var(--muted);line-height:1;}
+  .theme-label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:16px 0 6px;}
+  .theme-preview{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:10px;}
+  .theme-preview .tp-head{color:#fff;font-weight:700;font-size:14px;padding:12px;}
+  .theme-preview .tp-line{height:4px;}
+  .theme-preview .tp-btn{display:inline-block;margin:10px 12px;padding:6px 14px;border-radius:7px;font-weight:700;font-size:12.5px;}
+  .theme-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .theme-chip{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:#fff;border-radius:20px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);}
+  .theme-chip.actif{border-color:var(--navy);box-shadow:0 0 0 2px var(--navy) inset;font-weight:700;}
+  .theme-chip .dots{display:flex;}
+  .theme-chip .dots i{width:12px;height:12px;border-radius:50%;display:block;border:1px solid rgba(0,0,0,.08);}
+  .theme-chip .dots i+i{margin-left:-4px;}
+  .cible-row{display:flex;gap:8px;}
+  .cible{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:9px;padding:9px;font-size:12.5px;cursor:pointer;color:var(--text);}
+  .cible i{width:16px;height:16px;border-radius:4px;display:block;border:1px solid rgba(0,0,0,.12);}
+  .cible.actif{border-color:var(--navy);box-shadow:0 0 0 2px var(--navy) inset;font-weight:700;}
+  .swatch-grid{display:flex;flex-wrap:wrap;gap:6px;}
+  .swatch{width:34px;height:34px;flex:0 0 34px;border-radius:8px;border:1px solid rgba(0,0,0,.12);cursor:pointer;padding:0;}
+  .swatch-grid.palette{max-width:234px;}
+  .modal.modal-couleurs{max-width:440px;}
+  @media (min-width:760px){
+    .modal-overlay.centre{align-items:center;}
+    .modal-overlay.centre .modal{border-radius:16px;}
+  }
+  .swatch:active{transform:scale(.92);}
   .helper{font-size:11.5px;color:var(--muted);margin-top:3px;}
   .search-bar{margin-bottom:12px;}
+  .champ-recherche{position:relative;margin:0 0 12px;}
+  .champ-recherche input{
+    width:100%;box-sizing:border-box;padding:10px 36px 10px 36px;
+    border:1px solid var(--border);border-radius:9px;font-size:14px;background:#fff;
+  }
+  .champ-recherche input:focus{outline:none;border-color:var(--amber-dark);}
+  .champ-recherche .loupe{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;}
+  .champ-recherche .effacer{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);display:none;
+    border:none;background:none;font-size:20px;line-height:1;color:var(--muted);cursor:pointer;padding:4px 8px;
+  }
+  .champ-recherche.rempli .effacer{display:block;}
+  .aucun-resultat{display:none;text-align:center;color:var(--muted);font-size:13px;padding:14px 6px;}
+  .modal .champ-recherche{position:sticky;top:-1px;z-index:2;background:#fff;padding-top:4px;margin-bottom:8px;}
   select#tabSelect{display:none;}
 
   /* ---------- Zone imprimable / PDF ---------- */
   #printArea{display:none;}
   @media print{
-    body *{visibility:hidden;}
-    #printArea, #printArea *{visibility:visible;}
+    @page{ size:A4; margin:10mm; }
+    /* Tout ce qui n'est pas le document est retiré de la mise en page (display:none).
+       Avant, il était seulement rendu invisible (visibility:hidden) : l'écran de
+       l'application gardait sa hauteur et débordait sur une page blanche en fin de PDF. */
+    html, body{ height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; background:#fff !important; }
+    body > *:not(#printArea){ display:none !important; }
     #printArea{
-      display:block !important;position:absolute;top:0;left:0;width:100%;
+      display:block !important;position:static;width:100%;
       padding:0;margin:0;
     }
+    #printArea > .doc-page > :last-child{ margin-bottom:0 !important; }
+    /* Évite les pages quasi vides : le pied de page reste collé au bloc de signature
+       (s'il ne tient pas, les deux passent ensemble à la page suivante), et ni une
+       ligne de tableau, ni les totaux ne sont coupés en deux entre deux pages. */
+    .doc-signature{ break-inside:avoid; page-break-inside:avoid; break-after:avoid; page-break-after:avoid; }
+    .doc-footer{ break-before:avoid; page-break-before:avoid; margin-top:10px !important; }
+    .doc-totals, .doc-notes, .doc-meta{ break-inside:avoid; page-break-inside:avoid; }
+    table.doc-table tr{ break-inside:avoid; page-break-inside:avoid; }
+    .doc-page{ padding:0 !important; max-width:100% !important; }
     .no-print{display:none !important;}
   }
   .doc-page{
-    background:#fff;color:#16212E;font-family:Arial,Helvetica,sans-serif;
+    background:#fff;color:#16212E;font-family:Verdana,Arial,Helvetica,sans-serif;
     max-width:800px;margin:0 auto;padding:26px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
+  }
+  .doc-page *{
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
   }
   .doc-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--amber);padding-bottom:14px;margin-bottom:18px;}
   .doc-header .logo-img{max-width:150px;max-height:70px;object-fit:contain;}
@@ -207,10 +361,10 @@
   .doc-totals table{border-collapse:collapse;font-size:12.5px;min-width:260px;}
   .doc-totals td{padding:4px 8px;}
   .doc-totals tr.grand td{font-weight:800;font-size:14.5px;border-top:2px solid var(--navy);padding-top:8px;color:var(--navy);}
-  .doc-notes{font-size:11.5px;color:#333;background:#FAFBFC;border:1px solid #EDEFF2;border-radius:8px;padding:10px 12px;margin-bottom:18px;white-space:pre-wrap;}
-  .doc-signature{display:flex;justify-content:space-between;margin-top:26px;font-size:11.5px;}
-  .doc-signature .box{border:1px solid #E1E5EA;border-radius:8px;padding:12px;width:47%;min-height:80px;}
-  .doc-footer{margin-top:24px;font-size:10px;color:var(--muted);text-align:center;border-top:1px solid #EDEFF2;padding-top:8px;}
+  .doc-notes{font-size:11.5px;color:#333;background:#FAFBFC;border:1px solid #EDEFF2;border-radius:8px;padding:8px 12px;margin-bottom:12px;white-space:pre-wrap;}
+  .doc-signature{display:flex;justify-content:space-between;margin-top:16px;font-size:11.5px;}
+  .doc-signature .box{border:1px solid #E1E5EA;border-radius:8px;padding:10px;width:47%;min-height:60px;}
+  .doc-footer{margin-top:14px;font-size:10px;color:var(--muted);text-align:center;border-top:1px solid #EDEFF2;padding-top:6px;}
 </style>
 </head>
 <body>
@@ -231,6 +385,7 @@
   <button data-tab="articles">Articles</button>
   <button data-tab="entreprise">Entreprise</button>
 </nav>
+<div class="ent-bar no-print" id="entBar"></div>
 
 <main id="main"></main>
 
@@ -241,7 +396,8 @@
 
 <script>
 /* ============================ STOCKAGE ============================ */
-const KEY_ENT='ed_entreprise', KEY_ART='ed_articles', KEY_DEV='ed_devis', KEY_SEQ='ed_seq';
+const KEY_ENT='ed_entreprise', KEY_ENTS='ed_entreprises', KEY_ACTIVE_ENT='ed_active_entreprise';
+const KEY_ART='ed_articles', KEY_DEV='ed_devis', KEY_SEQ='ed_seq';
 
 function load(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -249,18 +405,97 @@ function load(key, fallback){
 }
 function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
-let entreprise = load(KEY_ENT, {
-  nom:'', adresse:'', cp:'', ville:'', tel:'', email:'',
-  identifiantFiscal:'', rge:'', assurance:'',
-  mentions:"Assurance responsabilité civile professionnelle souscrite.\nRèglement : 30% à la commande, solde à la réception des travaux.",
-  logo:'',
-  tampon:'',
-  signature:''
-});
+function entrepriseVierge(){
+  return {
+    id: uid(),
+    nom:'', adresse:'', cp:'', ville:'', tel:'', email:'',
+    identifiantFiscal:'', rge:'', assurance:'',
+    mentions:"Assurance responsabilité civile professionnelle souscrite.\nRèglement : 30% à la commande, solde à la réception des travaux.",
+    logo:'', tampon:'', signature:'', theme:'navy'
+  };
+}
+
+// Migration : les installations existantes n'avaient qu'une seule entreprise
+// (stockée sous KEY_ENT). On la transforme en tableau d'une entreprise si le
+// nouveau format n'existe pas encore — aucune donnée n'est perdue.
+let entreprises = load(KEY_ENTS, null);
+if(!entreprises){
+  const ancienne = load(KEY_ENT, null);
+  const premiere = ancienne ? Object.assign(entrepriseVierge(), ancienne, {id: uid()}) : entrepriseVierge();
+  entreprises = [premiere];
+  save(KEY_ENTS, entreprises);
+}
+let activeEntrepriseId = load(KEY_ACTIVE_ENT, entreprises[0].id);
+if(!entreprises.find(e=>e.id===activeEntrepriseId)) activeEntrepriseId = entreprises[0].id;
+
+function saveEntreprises(){ save(KEY_ENTS, entreprises); }
+function getActiveEntreprise(){ return entreprises.find(e=>e.id===activeEntrepriseId) || entreprises[0]; }
+function entrepriseForDevis(d){
+  if(d && d.entrepriseId){
+    const trouve = entreprises.find(e=>e.id===d.entrepriseId);
+    if(trouve) return trouve;
+  }
+  return entreprise;
+}
+
+// ⚠️ "entreprise" reste une RÉFÉRENCE vivante vers l'entreprise active dans le
+// tableau "entreprises" — tout le code existant qui lit/modifie entreprise.xxx
+// continue de fonctionner sans changement, tant qu'on réassigne cette variable
+// (via changerEntrepriseActive) au lieu de la remplacer par une copie.
+let entreprise = getActiveEntreprise();
+
+function changerEntrepriseActive(id){
+  if(!entreprises.find(e=>e.id===id)) return;
+  activeEntrepriseId = id;
+  save(KEY_ACTIVE_ENT, activeEntrepriseId);
+  entreprise = getActiveEntreprise();
+}
+
+/* ============================ ENTREPRISES SUPPLÉMENTAIRES (licence) ============================ */
+// Nombre d'entreprises inclus par défaut dans toute licence : 1. Au-delà, chaque
+// entreprise supplémentaire est un service payant distinct, débloqué par un code
+// séparé (voir computeEntrepriseSlotsKey) — n'affecte jamais la clé d'activation
+// principale de l'appareil, qui reste strictement inchangée.
+const KEY_MAX_ENT = 'ed_max_entreprises';
+let maxEntreprises = load(KEY_MAX_ENT, 1);
+
 let articles = load(KEY_ART, []);
 let devisList = load(KEY_DEV, []);
 let rawSeq = load(KEY_SEQ, {devis:1, facture:1});
 let seq = (typeof rawSeq === 'number') ? {devis:rawSeq, facture:1} : rawSeq;
+
+/* ============================ DONNÉES SÉPARÉES PAR ENTREPRISE ============================ */
+// Chaque entreprise a ses propres documents (devis/factures), sa propre bibliothèque
+// d'articles et sa propre numérotation. Les données déjà enregistrées (créées avant
+// cette mise à jour) sont rattachées à la première entreprise : rien n'est perdu.
+const KEY_SEQ_ENT = 'ed_seq_ent';
+let seqParEnt = load(KEY_SEQ_ENT, null);
+(function migrerParEntreprise(){
+  const premiere = entreprises[0].id;
+  const existe = id => entreprises.some(e=>e.id===id);
+  let modif = false;
+  devisList.forEach(d=>{ if(!d.entrepriseId || !existe(d.entrepriseId)){ d.entrepriseId = premiere; modif = true; } });
+  if(modif) save(KEY_DEV, devisList);
+  modif = false;
+  articles.forEach(a=>{ if(!a.entrepriseId || !existe(a.entrepriseId)){ a.entrepriseId = premiere; modif = true; } });
+  if(modif) save(KEY_ART, articles);
+  if(!seqParEnt){
+    seqParEnt = {};
+    seqParEnt[premiere] = {devis: seq.devis||1, facture: seq.facture||1};
+    save(KEY_SEQ_ENT, seqParEnt);
+  }
+})();
+function docsActifs(){ return devisList.filter(d=>d.entrepriseId===activeEntrepriseId); }
+function articlesActifs(){ return articles.filter(a=>a.entrepriseId===activeEntrepriseId); }
+function seqPour(entId){
+  if(!seqParEnt[entId]) seqParEnt[entId] = {devis:1, facture:1};
+  return seqParEnt[entId];
+}
+function incrSeq(type, entId){
+  const s = seqPour(entId || activeEntrepriseId);
+  s[type] = (s[type]||1) + 1;
+  save(KEY_SEQ_ENT, seqParEnt);
+}
 
 /* ============================ LICENCE / ACTIVATION (multi-écrans, 365 jours glissants) ============================ */
 // ⚠️ IMPORTANT : remplacez cette valeur par votre propre secret avant de distribuer
@@ -305,6 +540,13 @@ function computeActivationKey(deviceCode, renewalIndex, planType, secret){
   return key.match(/.{1,4}/g).join('-');
 }
 function normalizeKey(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+
+// Clé séparée (espace de hachage distinct "#ENT#") pour débloquer un nombre total
+// d'entreprises sur cet appareil. N'a aucune incidence sur la clé d'activation
+// principale — peut être redemandée/régénérée indépendamment à tout moment.
+function computeEntrepriseSlotsKey(deviceCode, nbEntreprises, secret){
+  return computeActivationKey(deviceCode, 0, 'ENT'+String(nbEntreprises||1), secret);
+}
 function generateDeviceCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans caractères ambigus (0/O, 1/I)
   let code = '';
@@ -322,7 +564,7 @@ function buildWhatsappLink(license, nextRenewalIndex, statusKind){
 }
 
 // ⚠️ Lien vers votre serveur de paiement en ligne (formulaire + FedaPay + livraison automatique).
-const ONLINE_PAYMENT_LINK = 'https://devispro-fedapay-2.onrender.com';
+const ONLINE_PAYMENT_LINK = 'https://devispro.hasnemtech.com';
 
 function showTrialBanner(license){
   const existing = document.getElementById('trialBanner');
@@ -456,13 +698,85 @@ function showToast(msg){
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1800);
 }
-function nextNumero(type){
+function nextNumero(type, entId){
   const year=new Date().getFullYear();
   const prefix = type==='facture' ? 'FAC-' : 'DEV-';
-  const n = prefix+year+'-'+String(seq[type]||1).padStart(4,'0');
+  const n = prefix+year+'-'+String(seqPour(entId || activeEntrepriseId)[type]||1).padStart(4,'0');
   return n;
 }
 function docTypeLabel(type){ return type==='facture' ? 'Facture' : 'Devis'; }
+
+/* ============================ RECHERCHE ============================ */
+// Minuscules, sans accents ni espaces superflus : "Câble" et "cable" se trouvent.
+function normaliser(s){
+  return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/œ/g,'oe').replace(/æ/g,'ae').replace(/[’']/g,"'").replace(/\s+/g,' ').trim();
+}
+// Chaîne HTML d'un champ de recherche. `id` sert à le retrouver après insertion.
+function champRecherche(id, placeholder, valeur){
+  return `<div class="champ-recherche${valeur?' rempli':''}" id="${id}">
+    <svg class="loupe" width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#5B6B7C" stroke-width="2"/><path d="M20 20L16.5 16.5" stroke="#5B6B7C" stroke-width="2" stroke-linecap="round"/></svg>
+    <input type="text" inputmode="search" enterkeyhint="search" autocomplete="off" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(valeur||'')}">
+    <button type="button" class="effacer" aria-label="Effacer la recherche">&times;</button>
+  </div>`;
+}
+// Branche un champ de recherche sur une liste d'éléments portant un attribut
+// data-recherche (texte déjà normalisé). On masque/affiche sans reconstruire la
+// liste : le clavier et le curseur ne sautent pas pendant la frappe.
+function brancherRecherche(racine, idChamp, selecteurItems, idAucun, surChangement){
+  const bloc = racine.querySelector('#'+idChamp);
+  if(!bloc) return;
+  const input = bloc.querySelector('input');
+  const aucun = idAucun ? racine.querySelector('#'+idAucun) : null;
+  const appliquer = ()=>{
+    const mots = normaliser(input.value).split(' ').filter(Boolean);
+    let visibles = 0;
+    racine.querySelectorAll(selecteurItems).forEach(el=>{
+      const texte = el.dataset.recherche || '';
+      const ok = mots.every(m=>texte.includes(m));
+      el.style.display = ok ? '' : 'none';
+      if(ok) visibles++;
+    });
+    bloc.classList.toggle('rempli', input.value.length>0);
+    if(aucun) aucun.style.display = (visibles===0 && mots.length) ? 'block' : 'none';
+    if(surChangement) surChangement(input.value);
+  };
+  input.addEventListener('input', appliquer);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') input.blur(); });
+  bloc.querySelector('.effacer').addEventListener('click', ()=>{ input.value=''; appliquer(); input.focus(); });
+  appliquer();
+}
+// Sur ordinateur : la molette ou les touches ↑↓ ne doivent pas changer une quantité
+// ou un prix par accident pendant qu'on fait défiler la page.
+document.addEventListener('wheel', e=>{
+  const el = document.activeElement;
+  if(el && el.type==='number' && el===e.target) el.blur();
+}, {passive:true});
+document.addEventListener('keydown', e=>{
+  if((e.key==='ArrowUp' || e.key==='ArrowDown') && e.target && e.target.type==='number') e.preventDefault();
+});
+// Désignation d'une ligne : sur PC, une fois le champ sélectionné (ou avec Maj + molette),
+// la molette fait défiler le texte de gauche à droite au lieu de faire défiler la page.
+document.addEventListener('wheel', e=>{
+  const el = e.target;
+  if(!el || !el.classList || !el.classList.contains('desig-ligne')) return;
+  if(el.scrollWidth <= el.clientWidth) return;              // texte court : rien à faire défiler
+  if(document.activeElement !== el && !e.shiftKey) return;  // sinon la page défile normalement
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  const max = el.scrollWidth - el.clientWidth;
+  const avant = el.scrollLeft;
+  el.scrollLeft = Math.max(0, Math.min(max, avant + delta));
+  if(el.scrollLeft !== avant) e.preventDefault();          // en butée, on rend la main à la page
+}, {passive:false});
+// Total d'une ligne : "40 000 FCFA" ; sur téléphone le mot FCFA est masqué (l'en-tête suffit)
+function totalLigneHtml(l){
+  return Math.round((l.qte*l.prixUnitaire)+Number.EPSILON).toLocaleString('fr-FR') + '<span class="devise"> FCFA</span>';
+}
+function rechercheArticle(a){
+  return normaliser([a.designation, fcfa(a.prixUnitaire), Math.round(a.prixUnitaire||0)].join(' '));
+}
+let rechercheDocuments = '';   // conservée quand on revient de l'éditeur vers la liste
+let rechercheArticles = '';
 
 /* ============================ NAVIGATION ============================ */
 let currentTab='devis';
@@ -505,12 +819,119 @@ function openTypeChoiceModal(){
 }
 
 function render(){
+  // render() remplace toujours le contenu : l'éditeur n'est plus ouvert après.
+  editingDevisId = null; window._editorGet = null;
   const fab=document.getElementById('fabBtn');
   fab.style.display = (currentTab==='entreprise') ? 'none':'flex';
   if(currentTab==='devis') renderDevisList();
   else if(currentTab==='articles') renderArticles();
   else renderEntreprise();
+  majBarreEntreprise();
+  saveSession();
 }
+
+/* ============================ CHANGEMENT D'ENTREPRISE (barre rapide) ============================ */
+function majBarreEntreprise(){
+  const bar = document.getElementById('entBar');
+  if(!bar) return;
+  // Affichée seulement s'il y a plusieurs entreprises, jamais pendant l'édition d'un
+  // document (un brouillon non enregistré serait perdu) ni dans l'onglet Entreprise
+  // (qui a déjà son propre sélecteur).
+  if(entreprises.length < 2 || editingDevisId !== null || currentTab === 'entreprise'){ bar.style.display='none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = `<span>🏢 Entreprise :</span><select id="entBarSelect">${
+    entreprises.map(e=>`<option value="${e.id}" ${e.id===activeEntrepriseId?'selected':''}>${escapeHtml(e.nom)||'(sans nom)'}</option>`).join('')
+  }</select>`;
+  document.getElementById('entBarSelect').addEventListener('change', e=>basculerEntreprise(e.target.value));
+}
+function basculerEntreprise(id){
+  if(id === activeEntrepriseId) return;
+  changerEntrepriseActive(id);
+  appliquerTheme(entreprise.theme || 'navy');
+  rechercheDocuments = ''; rechercheArticles = '';
+  window.scrollTo(0,0);
+  render();
+}
+
+/* ============================ REPRISE OÙ ON S'ÉTAIT ARRÊTÉ ============================ */
+// L'état (onglet, entreprise, recherche, position de défilement et brouillon du
+// document en cours d'édition) est sauvegardé en continu. Si l'application est quittée,
+// mise en arrière-plan puis rechargée par le système, on retrouve exactement l'écran
+// et la saisie en cours.
+const KEY_SESSION = 'ed_session';
+function saveSession(){
+  try{
+    const main = document.getElementById('main');
+    if(!main || !main.children.length) return; // rien d'affiché (écran de verrouillage) : on ne touche pas à la session
+    const s = { tab:currentTab, entId:activeEntrepriseId, rechDocs:rechercheDocuments, rechArts:rechercheArticles,
+                scrollY: window.scrollY||0, t: Date.now(), editing:null };
+    if(editingDevisId !== null && typeof window._editorGet === 'function'){
+      const g = window._editorGet();
+      if(g) s.editing = { id:g.id, draft:g.devis };
+    }
+    localStorage.setItem(KEY_SESSION, JSON.stringify(s));
+  }catch(e){ /* stockage plein ou indisponible : on ignore */ }
+}
+let _sessionTimer = null;
+function saveSessionDebounced(){ clearTimeout(_sessionTimer); _sessionTimer = setTimeout(saveSession, 300); }
+window.addEventListener('pagehide', saveSession);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') saveSession(); });
+window.addEventListener('scroll', saveSessionDebounced, {passive:true});
+['input','change'].forEach(ev=>document.getElementById('main').addEventListener(ev, saveSessionDebounced));
+
+function restaurerSession(){
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem(KEY_SESSION) || 'null'); }catch(e){}
+  if(!s) return false;
+  try{
+    if(s.entId && s.entId !== activeEntrepriseId && entreprises.some(e=>e.id===s.entId)){
+      changerEntrepriseActive(s.entId);
+      appliquerTheme(entreprise.theme || 'navy');
+    }
+    rechercheDocuments = s.rechDocs || '';
+    rechercheArticles = s.rechArts || '';
+    currentTab = ['devis','articles','entreprise'].includes(s.tab) ? s.tab : 'devis';
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===currentTab));
+    render();
+    const ed = s.editing;
+    if(ed && ed.draft && currentTab === 'devis' && (!ed.id || devisList.some(d=>d.id===ed.id))){
+      openDevisEditor(ed.id || null, ed.draft.type, ed.draft);
+    }
+    const y = s.scrollY || 0;
+    if(y > 0){ setTimeout(()=>window.scrollTo(0,y), 60); setTimeout(()=>window.scrollTo(0,y), 350); }
+    return true;
+  }catch(e){
+    console.error('Restauration impossible :', e);
+    editingDevisId = null; currentTab = 'devis';
+    render();
+    return true;
+  }
+}
+
+// Appelée par l'application Android à chaque appui sur le bouton "retour" physique/
+// gestuel du téléphone. Gère la navigation interne (fermer une modale, quitter
+// l'éditeur de devis, revenir à l'onglet Documents) et ne renvoie 'home' que
+// lorsqu'il n'y a plus rien à faire côté JS — c'est uniquement dans ce cas que
+// l'app Android doit proposer de quitter l'application.
+window.handleAndroidBack = function(){
+  const openModal = document.querySelector('.modal-overlay');
+  if(openModal){ openModal.remove(); if(typeof majBoutonCouleurs==='function') majBoutonCouleurs(); return 'handled'; }
+
+  if(editingDevisId !== null){
+    editingDevisId = null;
+    currentTab = 'devis';
+    render();
+    return 'handled';
+  }
+
+  if(currentTab !== 'devis'){
+    const devisTabBtn = document.querySelector('nav.tabs button[data-tab="devis"]');
+    if(devisTabBtn) devisTabBtn.click();
+    return 'handled';
+  }
+
+  return 'home';
+};
 
 /* ============================ ENTREPRISE ============================ */
 function initialesFromNom(nom){
@@ -530,9 +951,326 @@ function defaultLogoDataUri(nom){
 }
 function currentLogo(){ return entreprise.logo || defaultLogoDataUri(entreprise.nom); }
 
+/* ============================ COULEURS / THÈMES ============================ */
+// Chaque thème = 1 couleur principale (en-têtes, titres, tableau imprimé) +
+// 1 couleur d'accent (boutons, soulignement du document). Les variantes plus
+// claires/foncées sont calculées automatiquement.
+const THEMES = {
+  navy:     { label:'Bleu nuit',      primary:'#10233A', accent:'#F5B93D' },
+  roi:      { label:'Bleu roi',       primary:'#0B2A6F', accent:'#3D8BFD' },
+  ocean:    { label:'Bleu océan',     primary:'#0D2E4A', accent:'#5BB8D6' },
+  turquoise:{ label:'Turquoise',      primary:'#0B3B3C', accent:'#2EC4B6' },
+  emeraude: { label:'Émeraude',       primary:'#0F3D2E', accent:'#4FBF8B' },
+  lime:     { label:'Vert nature',    primary:'#1F3A12', accent:'#9BCB3C' },
+  bordeaux: { label:'Bordeaux',       primary:'#3D0F1A', accent:'#E0A85C' },
+  rouge:    { label:'Rouge',          primary:'#5A0E0E', accent:'#E5484D' },
+  orange:   { label:'Orange',         primary:'#3A2410', accent:'#F08A24' },
+  or:       { label:'Noir & or',      primary:'#151515', accent:'#D4AF37' },
+  violet:   { label:'Violet',         primary:'#2E1A47', accent:'#9B6BD6' },
+  rose:     { label:'Rose',           primary:'#4A1030', accent:'#F0679E' },
+  anthracite:{label:'Anthracite',     primary:'#2B2F36', accent:'#8FA3B8' },
+  chocolat: { label:'Chocolat',       primary:'#3B2418', accent:'#C8935A' }
+};
+
+// Palette libre (tableau de choix) : 48 couleurs couvrant toutes les teintes,
+// de la plus foncée à la plus claire.
+const PALETTE = [
+  '#000000','#1C1C1C','#3A3A3A','#5E5E5E','#8A8A8A','#B5B5B5',
+  '#10233A','#0B2A6F','#1E4FA8','#3D8BFD','#5BB8D6','#9ED8EE',
+  '#0B3B3C','#0F6E6A','#2EC4B6','#0F3D2E','#1E7A4C','#4FBF8B',
+  '#1F3A12','#4C7A1E','#9BCB3C','#5C5A10','#B8A51C','#F2D43D',
+  '#3A2410','#8A4B12','#F08A24','#F5B93D','#D4AF37','#E0A85C',
+  '#5A0E0E','#9E1B1B','#E5484D','#F27D72','#3D0F1A','#7A1E35',
+  '#4A1030','#A3255E','#F0679E','#2E1A47','#5B2D8E','#9B6BD6',
+  '#3B2418','#6E4A33','#C8935A','#2B2F36','#4A5563','#8FA3B8'
+];
+
+function hexToRgb(h){
+  h = (h||'').replace('#','');
+  if(h.length===3) h = h.split('').map(c=>c+c).join('');
+  const n = parseInt(h,16);
+  if(isNaN(n) || h.length!==6) return null;
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+}
+function rgbToHex(r,g,b){
+  return '#' + [r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function melanger(hex, cible, t){ // t entre 0 et 1 : mélange vers blanc (cible=255) ou noir (0)
+  const c = hexToRgb(hex); if(!c) return hex;
+  return rgbToHex(c.r+(cible-c.r)*t, c.g+(cible-c.g)*t, c.b+(cible-c.b)*t);
+}
+function eclaircir(hex,t){ return melanger(hex,255,t); }
+function assombrir(hex,t){ return melanger(hex,0,t); }
+function luminance(hex){
+  const c = hexToRgb(hex); if(!c) return 0;
+  const f = v => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); };
+  return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b);
+}
+function saturation(hex){
+  const c = hexToRgb(hex); if(!c) return 0;
+  const mx = Math.max(c.r,c.g,c.b), mn = Math.min(c.r,c.g,c.b);
+  return mx===0 ? 0 : (mx-mn)/mx;
+}
+// La couleur principale porte du texte blanc (en-têtes, tableau imprimé) :
+// on l'assombrit automatiquement si elle est trop claire pour rester lisible.
+function principaleLisible(hex){
+  let h = hex, i = 0;
+  while(luminance(h) > 0.18 && i < 12){ h = assombrir(h, 0.12); i++; }
+  return h;
+}
+
+function couleursEntreprise(ent){
+  if(ent && ent.theme === 'custom' && ent.couleurs && hexToRgb(ent.couleurs.primary) && hexToRgb(ent.couleurs.accent)){
+    return { primary: ent.couleurs.primary, accent: ent.couleurs.accent };
+  }
+  const t = THEMES[(ent && ent.theme) || 'navy'] || THEMES.navy;
+  return { primary: t.primary, accent: t.accent };
+}
+
+// Accepte un nom de thème (compatibilité) — mais lit toujours les couleurs de
+// l'entreprise courante, ce qui couvre aussi le mode "personnalisé".
+function appliquerTheme(){
+  const c = couleursEntreprise(entreprise);
+  const primary = principaleLisible(c.primary);
+  const r = document.documentElement.style;
+  r.setProperty('--navy', primary);
+  r.setProperty('--navy-2', eclaircir(primary, 0.18));
+  r.setProperty('--amber', c.accent);
+  r.setProperty('--amber-dark', assombrir(c.accent, 0.15));
+}
+appliquerTheme();
+
+// Extrait les couleurs dominantes d'une image (logo) : réduit l'image, ignore
+// le transparent et le quasi-blanc, regroupe les pixels proches, puis garde
+// les teintes les plus présentes et suffisamment différentes entre elles.
+function extraireCouleursLogo(dataUrl){
+  return new Promise(resolve=>{
+    if(!dataUrl){ resolve([]); return; }
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const S = 64;
+        const cv = document.createElement('canvas');
+        cv.width = S; cv.height = S;
+        const ctx = cv.getContext('2d');
+        ctx.drawImage(img, 0, 0, S, S);
+        const d = ctx.getImageData(0, 0, S, S).data;
+        const groupes = {};
+        for(let i=0;i<d.length;i+=4){
+          if(d[i+3] < 128) continue;                                  // transparent
+          if(d[i]>235 && d[i+1]>235 && d[i+2]>235) continue;          // fond blanc
+          const k = (d[i]>>4)+','+(d[i+1]>>4)+','+(d[i+2]>>4);
+          if(!groupes[k]) groupes[k] = { n:0, r:0, g:0, b:0 };
+          const gr = groupes[k]; gr.n++; gr.r+=d[i]; gr.g+=d[i+1]; gr.b+=d[i+2];
+        }
+        const tries = Object.values(groupes).sort((a,b)=>b.n-a.n)
+          .map(gr=>rgbToHex(gr.r/gr.n, gr.g/gr.n, gr.b/gr.n));
+        const retenues = [];
+        for(const h of tries){
+          const c = hexToRgb(h);
+          const tropProche = retenues.some(x=>{
+            const y = hexToRgb(x);
+            return Math.abs(c.r-y.r)+Math.abs(c.g-y.g)+Math.abs(c.b-y.b) < 70;
+          });
+          if(!tropProche) retenues.push(h);
+          if(retenues.length >= 8) break;
+        }
+        resolve(retenues);
+      }catch(e){ resolve([]); }
+    };
+    img.onerror = ()=>resolve([]);
+    img.src = dataUrl;
+  });
+}
+
+// Suggestion automatique : principale = couleur dominante la plus foncée,
+// accent = couleur la plus vive parmi les autres.
+function suggererDepuisLogo(couleurs){
+  if(!couleurs.length) return null;
+  const parFoncee = [...couleurs].sort((a,b)=>luminance(a)-luminance(b));
+  const primary = parFoncee[0];
+  const autres = couleurs.filter(c=>c!==primary);
+  const accent = autres.length
+    ? [...autres].sort((a,b)=>saturation(b)-saturation(a))[0]
+    : eclaircir(primary, 0.45);
+  return { primary, accent };
+}
+
+let cibleCouleur = 'primary'; // quelle couleur un clic sur une pastille modifie
+let couleursLogoCache = { src:null, couleurs:[] };
+
+function definirCouleurs(primary, accent){
+  entreprise.theme = 'custom';
+  entreprise.couleurs = { primary, accent };
+  saveEntreprises();
+  appliquerTheme();
+}
+
+function nomThemeActuel(){
+  if(entreprise.theme==='custom') return 'Couleurs personnalisées';
+  return (THEMES[entreprise.theme] || THEMES.navy).label;
+}
+function majBoutonCouleurs(){
+  const dots = document.getElementById('colorBtnDots');
+  const label = document.getElementById('colorBtnLabel');
+  if(!dots || !label) return;
+  const c = couleursEntreprise(entreprise);
+  dots.innerHTML = `<i style="background:${principaleLisible(c.primary)}"></i><i style="background:${c.accent}"></i>`;
+  label.textContent = nomThemeActuel();
+}
+function ouvrirCouleurs(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay centre';
+  overlay.innerHTML = `
+    <div class="modal modal-couleurs">
+      <div class="modal-header"><h2>Couleurs de l'entreprise</h2><button class="close-x">&times;</button></div>
+      <div id="themeCard"></div>
+      <button type="button" class="btn btn-primary btn-block" id="closeThemeBtn" style="margin-top:16px;">Terminé</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const fermer = ()=>{ overlay.remove(); majBoutonCouleurs(); };
+  overlay.querySelector('.close-x').addEventListener('click', fermer);
+  overlay.querySelector('#closeThemeBtn').addEventListener('click', fermer);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) fermer(); });
+  renderThemeCard();
+}
+
+function renderThemeCard(){
+  const box = document.getElementById('themeCard');
+  if(!box) return;
+  majBoutonCouleurs();
+  const c = couleursEntreprise(entreprise);
+  const lisible = principaleLisible(c.primary);
+  const ajustee = lisible.toUpperCase() !== c.primary.toUpperCase();
+  const pastille = (hex, attrs) =>
+    `<button type="button" class="swatch" ${attrs} style="background:${hex};" title="${hex}"></button>`;
+
+  box.innerHTML = `
+    <div class="helper" style="margin-top:0;">S'appliquent à l'application et aux devis/factures imprimés de l'entreprise active.</div>
+
+    <div class="theme-preview">
+      <div class="tp-head" style="background:${lisible};">${escapeHtml(entreprise.nom)||'Votre entreprise'}</div>
+      <div class="tp-line" style="background:${c.accent};"></div>
+      <div class="tp-btn" style="background:${c.accent};color:${lisible};">Bouton</div>
+    </div>
+    ${ajustee ? `<div class="helper">Votre couleur principale étant claire, une version légèrement plus foncée est utilisée pour que le texte blanc reste lisible.</div>` : ''}
+
+    <label class="theme-label">Thèmes prêts à l'emploi</label>
+    <div class="theme-chips">
+      ${Object.keys(THEMES).map(k=>{
+        const t = THEMES[k], actif = entreprise.theme===k;
+        return `<button type="button" class="theme-chip ${actif?'actif':''}" data-theme="${k}">
+          <span class="dots"><i style="background:${t.primary}"></i><i style="background:${t.accent}"></i></span>${t.label}</button>`;
+      }).join('')}
+    </div>
+
+    <label class="theme-label">Personnaliser — la couleur choisie s'applique à :</label>
+    <div class="cible-row">
+      <button type="button" class="cible ${cibleCouleur==='primary'?'actif':''}" data-cible="primary">
+        <i style="background:${c.primary}"></i> Couleur principale</button>
+      <button type="button" class="cible ${cibleCouleur==='accent'?'actif':''}" data-cible="accent">
+        <i style="background:${c.accent}"></i> Couleur d'accent</button>
+    </div>
+
+    <label class="theme-label">Couleurs de votre logo</label>
+    <div id="logoColors">${entreprise.logo ? '<div class="helper">Analyse du logo…</div>' : '<div class="helper">Importez votre logo (plus bas) pour obtenir automatiquement ses couleurs.</div>'}</div>
+
+    <label class="theme-label">Tableau de couleurs</label>
+    <div class="swatch-grid palette">${PALETTE.map(h=>pastille(h, `data-hex="${h}"`)).join('')}</div>
+
+    <label class="theme-label">Code couleur exact (ex : #1E4FA8)</label>
+    <div class="row2">
+      <div class="field"><input type="text" id="hexInput" value="${cibleCouleur==='primary'?c.primary:c.accent}" maxlength="7" style="text-transform:uppercase;"></div>
+      <div class="field"><button type="button" class="btn btn-ghost btn-block" id="hexApply">Appliquer</button></div>
+    </div>
+  `;
+
+  const appliquerSurCible = (hex)=>{
+    const cur = couleursEntreprise(entreprise);
+    if(cibleCouleur==='primary') definirCouleurs(hex, cur.accent);
+    else definirCouleurs(cur.primary, hex);
+    renderThemeCard();
+  };
+
+  box.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click', ()=>{
+    entreprise.theme = b.dataset.theme;
+    saveEntreprises();
+    appliquerTheme();
+    renderThemeCard();
+    showToast('Thème appliqué');
+  }));
+  box.querySelectorAll('[data-cible]').forEach(b=>b.addEventListener('click', ()=>{
+    cibleCouleur = b.dataset.cible;
+    renderThemeCard();
+  }));
+  box.querySelectorAll('.swatch-grid [data-hex]').forEach(b=>b.addEventListener('click', ()=>appliquerSurCible(b.dataset.hex)));
+  document.getElementById('hexApply').addEventListener('click', ()=>{
+    let v = document.getElementById('hexInput').value.trim();
+    if(v && v[0]!=='#') v = '#'+v;
+    if(!hexToRgb(v)){ showToast('Code couleur invalide (format #RRVVBB)'); return; }
+    appliquerSurCible(rgbToHex(...Object.values(hexToRgb(v))));
+  });
+
+  // Couleurs extraites du logo (mises en cache pour ne pas réanalyser à chaque clic)
+  if(entreprise.logo){
+    const afficher = (couleurs)=>{
+      const zone = document.getElementById('logoColors');
+      if(!zone) return;
+      if(!couleurs.length){ zone.innerHTML = '<div class="helper">Aucune couleur exploitable trouvée dans le logo.</div>'; return; }
+      zone.innerHTML = `
+        <div class="swatch-grid logo">${couleurs.map(h=>pastille(h, `data-logo-hex="${h}"`)).join('')}</div>
+        <button type="button" class="btn btn-amber btn-block" id="autoLogoBtn" style="margin-top:8px;">✨ Appliquer automatiquement les couleurs du logo</button>`;
+      zone.querySelectorAll('[data-logo-hex]').forEach(b=>b.addEventListener('click', ()=>appliquerSurCible(b.dataset.logoHex)));
+      document.getElementById('autoLogoBtn').addEventListener('click', ()=>{
+        const s = suggererDepuisLogo(couleurs);
+        if(!s) return;
+        definirCouleurs(s.primary, s.accent);
+        renderThemeCard();
+        showToast('Couleurs du logo appliquées');
+      });
+    };
+    if(couleursLogoCache.src === entreprise.logo) afficher(couleursLogoCache.couleurs);
+    else extraireCouleursLogo(entreprise.logo).then(couleurs=>{
+      couleursLogoCache = { src: entreprise.logo, couleurs };
+      afficher(couleurs);
+    });
+  }
+}
+
 function renderEntreprise(){
   const m=document.getElementById('main');
+  majBarreEntreprise();
+  const peutAjouter = entreprises.length < maxEntreprises;
   m.innerHTML = `
+    <div class="card">
+      <h2>Vos entreprises (${entreprises.length}/${maxEntreprises})</h2>
+      <div class="field">
+        <label>Entreprise active</label>
+        <select id="selectEntreprise">
+          ${entreprises.map(e=>`<option value="${e.id}" ${e.id===activeEntrepriseId?'selected':''}>${escapeHtml(e.nom)||'(sans nom)'}</option>`).join('')}
+        </select>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-ghost btn-sm" id="addEntBtn" ${peutAjouter?'':'disabled'}>+ Ajouter une entreprise</button>
+        ${entreprises.length>1 ? '<button class="btn btn-ghost btn-sm" id="delEntBtn" style="color:var(--danger);">Supprimer cette entreprise</button>' : ''}
+      </div>
+      ${!peutAjouter ? `<div class="helper">Limite atteinte pour votre licence actuelle. Débloquez des emplacements supplémentaires ci-dessous.</div>` : ''}
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-size:12.5px;color:var(--muted);">Débloquer plus d'entreprises</summary>
+        <div style="margin-top:8px;">
+          <div class="field"><label>Nombre total d'entreprises souhaité</label><input type="number" id="entSlotsNb" min="${maxEntreprises}" value="${maxEntreprises+1}"></div>
+          <div class="field"><label>Code de déblocage (fourni par votre vendeur)</label><input type="text" id="entSlotsCode" placeholder="Code reçu après paiement" style="text-transform:uppercase;"></div>
+          <button class="btn btn-amber btn-block" id="unlockEntBtn">Débloquer</button>
+        </div>
+      </details>
+    </div>
+
+    <button type="button" class="card color-btn" id="openThemeBtn">
+      <span class="dots" id="colorBtnDots"></span>
+      <span class="color-btn-txt"><b>🎨 Couleurs de l'entreprise</b><small id="colorBtnLabel"></small></span>
+      <span class="color-btn-arrow">›</span>
+    </button>
+
     <div class="card">
       <h2>Coordonnées de l'entreprise</h2>
       <div class="field">
@@ -599,6 +1337,65 @@ function renderEntreprise(){
     </div>
   `;
 
+  document.getElementById('selectEntreprise').addEventListener('change', (e)=>{
+    changerEntrepriseActive(e.target.value);
+    appliquerTheme(entreprise.theme || 'navy');
+    rechercheDocuments = ''; rechercheArticles = '';
+    renderEntreprise();
+    saveSession();
+  });
+
+  document.getElementById('addEntBtn').addEventListener('click', ()=>{
+    if(entreprises.length >= maxEntreprises){
+      showToast("Limite d'entreprises atteinte pour votre licence");
+      return;
+    }
+    const nouvelle = entrepriseVierge();
+    entreprises.push(nouvelle);
+    saveEntreprises();
+    changerEntrepriseActive(nouvelle.id);
+    appliquerTheme(nouvelle.theme);
+    renderEntreprise();
+    showToast('Nouvelle entreprise créée');
+  });
+
+  const delEntBtn = document.getElementById('delEntBtn');
+  if(delEntBtn){
+    delEntBtn.addEventListener('click', ()=>{
+      const nbDocs = docsActifs().length, nbArts = articlesActifs().length;
+      if(!confirm(`Supprimer définitivement "${entreprise.nom||'cette entreprise'}" ?\n\nSes ${nbDocs} document(s) (devis et factures) et ses ${nbArts} article(s) seront aussi supprimés. Cette action est irréversible.`)) return;
+      const idSupprimee = activeEntrepriseId;
+      devisList = devisList.filter(d=>d.entrepriseId!==idSupprimee); save(KEY_DEV, devisList);
+      articles = articles.filter(a=>a.entrepriseId!==idSupprimee); save(KEY_ART, articles);
+      delete seqParEnt[idSupprimee]; save(KEY_SEQ_ENT, seqParEnt);
+      entreprises = entreprises.filter(e=>e.id!==idSupprimee);
+      saveEntreprises();
+      changerEntrepriseActive(entreprises[0].id);
+      appliquerTheme(entreprise.theme || 'navy');
+      renderEntreprise();
+      showToast('Entreprise supprimée');
+    });
+  }
+
+  document.getElementById('unlockEntBtn').addEventListener('click', ()=>{
+    const nb = parseInt(document.getElementById('entSlotsNb').value, 10) || maxEntreprises;
+    const code = document.getElementById('entSlotsCode').value;
+    const lic = load(KEY_LICENSE, {});
+    if(!lic.deviceCode){ showToast('Licence introuvable sur cet appareil'); return; }
+    const attendu = normalizeKey(computeEntrepriseSlotsKey(lic.deviceCode, nb, LICENSE_SECRET));
+    if(normalizeKey(code) === attendu && nb >= maxEntreprises){
+      maxEntreprises = nb;
+      save(KEY_MAX_ENT, maxEntreprises);
+      renderEntreprise();
+      showToast(`Vous pouvez maintenant gérer jusqu'à ${nb} entreprises`);
+    } else {
+      showToast('Code de déblocage invalide');
+    }
+  });
+
+  majBoutonCouleurs();
+  document.getElementById('openThemeBtn').addEventListener('click', ouvrirCouleurs);
+
   document.getElementById('logoInput').addEventListener('change', (e)=>{
     const file=e.target.files[0]; if(!file) return;
     const reader=new FileReader();
@@ -611,7 +1408,7 @@ function renderEntreprise(){
         canvas.width=img.width*scale; canvas.height=img.height*scale;
         canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
         entreprise.logo = canvas.toDataURL('image/png');
-        save(KEY_ENT, entreprise);
+        saveEntreprises();
         renderEntreprise();
         showToast('Logo mis à jour');
       };
@@ -624,7 +1421,7 @@ function renderEntreprise(){
   if(removeBtn){
     removeBtn.addEventListener('click', ()=>{
       entreprise.logo='';
-      save(KEY_ENT, entreprise);
+      saveEntreprises();
       renderEntreprise();
       showToast('Logo par défaut rétabli');
     });
@@ -642,7 +1439,7 @@ function renderEntreprise(){
         canvas.width=img.width*scale; canvas.height=img.height*scale;
         canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
         entreprise[field] = canvas.toDataURL('image/png');
-        save(KEY_ENT, entreprise);
+        saveEntreprises();
         renderEntreprise();
         showToast(label+' mis à jour');
       };
@@ -680,7 +1477,7 @@ function renderEntreprise(){
   if(removeTamponBtn){
     removeTamponBtn.addEventListener('click', ()=>{
       entreprise.tampon='';
-      save(KEY_ENT, entreprise);
+      saveEntreprises();
       renderEntreprise();
       showToast('Tampon retiré');
     });
@@ -689,7 +1486,7 @@ function renderEntreprise(){
   if(removeSignatureBtn){
     removeSignatureBtn.addEventListener('click', ()=>{
       entreprise.signature='';
-      save(KEY_ENT, entreprise);
+      saveEntreprises();
       renderEntreprise();
       showToast('Signature retirée');
     });
@@ -702,7 +1499,7 @@ function renderEntreprise(){
     entreprise.identifiantFiscal=val('f_idfiscal');
     entreprise.rge=val('f_rge'); entreprise.assurance=val('f_assurance');
     entreprise.mentions=val('f_mentions');
-    save(KEY_ENT, entreprise);
+    saveEntreprises();
     renderEntreprise();
     showToast('Informations enregistrées');
   });
@@ -712,15 +1509,16 @@ function val(id){ return document.getElementById(id).value.trim(); }
 /* ============================ ARTICLES (bibliothèque) ============================ */
 function renderArticles(){
   const m=document.getElementById('main');
+  const mesArticles = articlesActifs();
   let listHtml='';
-  if(articles.length===0){
+  if(mesArticles.length===0){
     listHtml = `<div class="empty-state">
       <svg class="bolt" viewBox="0 0 24 24" fill="none"><rect x="4" y="2" width="16" height="20" rx="2" stroke="#5B6B7C" stroke-width="1.6"/><path d="M7.5 7.5H16.5M7.5 11.5H16.5M7.5 15.5H13" stroke="#5B6B7C" stroke-width="1.6" stroke-linecap="round"/></svg>
       <div>Aucun article enregistré.<br>Ajoutez vos prestations et produits récurrents (main d'œuvre, matériel, forfaits...) pour créer vos devis plus vite.</div>
     </div>`;
   } else {
-    listHtml = articles.map(a=>`
-      <div class="list-item">
+    listHtml = mesArticles.map(a=>`
+      <div class="list-item" data-recherche="${escapeHtml(rechercheArticle(a))}">
         <div>
           <div class="name">${escapeHtml(a.designation)}</div>
           <div class="meta">${fcfa(a.prixUnitaire)}</div>
@@ -732,7 +1530,12 @@ function renderArticles(){
       </div>
     `).join('');
   }
-  m.innerHTML = `<div class="card"><h2>Bibliothèque d'articles</h2>${listHtml}</div>`;
+  const recherche = mesArticles.length
+    ? champRecherche('rechArts', 'Rechercher un article…', rechercheArticles)
+    : '';
+  m.innerHTML = `<div class="card"><h2>Bibliothèque d'articles</h2>${recherche}${listHtml}
+    <div class="aucun-resultat" id="aucunArt">Aucun article ne correspond à cette recherche.</div></div>`;
+  brancherRecherche(m, 'rechArts', '.list-item[data-recherche]', 'aucunArt', v=>{ rechercheArticles = v; });
 
   m.querySelectorAll('[data-edit-art]').forEach(b=>b.addEventListener('click',()=>openArticleModal(b.dataset.editArt)));
   m.querySelectorAll('[data-del-art]').forEach(b=>b.addEventListener('click',()=>{
@@ -744,7 +1547,7 @@ function renderArticles(){
 }
 
 function openArticleModal(id){
-  const a = id ? articles.find(x=>x.id===id) : {id:uid(), designation:'', prixUnitaire:0};
+  const a = id ? articles.find(x=>x.id===id) : {id:uid(), entrepriseId:activeEntrepriseId, designation:'', prixUnitaire:0};
   const overlay=document.createElement('div');
   overlay.className='modal-overlay';
   overlay.innerHTML = `
@@ -782,6 +1585,7 @@ function computeTotals(devis){
   const remise = devis.remisePct||0;
   let sousTotal=0, sousTotalBrut=0;
   devis.lignes.forEach(l=>{
+    if(l.type==='section') return; // une section n'a pas de prix, elle ne fait que regrouper des lignes
     const brut = l.qte * l.prixUnitaire;
     sousTotalBrut += brut;
     sousTotal += brut * (1 - remise/100);
@@ -794,21 +1598,27 @@ function computeTotals(devis){
 
 function renderDevisList(){
   const m=document.getElementById('main');
+  const mesDocs = docsActifs();
   let listHtml='';
-  if(devisList.length===0){
+  if(mesDocs.length===0){
     listHtml=`<div class="empty-state">
       <svg class="bolt" viewBox="0 0 24 24" fill="none"><rect x="4" y="2" width="16" height="20" rx="2" stroke="#5B6B7C" stroke-width="1.6"/><path d="M7.5 7.5H16.5M7.5 11.5H16.5M7.5 15.5H13" stroke="#5B6B7C" stroke-width="1.6" stroke-linecap="round"/></svg>
       <div>Aucun document pour le moment.<br>Appuyez sur le bouton + pour créer votre premier devis ou facture.</div>
     </div>`;
   } else {
-    const sorted=[...devisList].sort((a,b)=> (b.dateCreation||'').localeCompare(a.dateCreation||''));
+    const sorted=[...mesDocs].sort((a,b)=> (b.dateCreation||'').localeCompare(a.dateCreation||''));
     listHtml = sorted.map(d=>{
       const t=computeTotals(d);
       const type = d.type||'devis';
+      const c = d.client||{};
+      const recherche = normaliser([
+        d.numero, docTypeLabel(type), c.nom, c.ville, c.tel, c.email,
+        frDate(d.dateCreation), fcfa(t.total), Math.round(t.total), statutLabel(d.statut, type)
+      ].join(' '));
       return `
-      <div class="list-item">
+      <div class="list-item" data-recherche="${escapeHtml(recherche)}">
         <div>
-          <div class="name">${type==='facture'?'🧾':'📄'} ${d.numero} — ${escapeHtml(d.client.nom)||'Client sans nom'}</div>
+          <div class="name">${type==='facture'?'🧾':'📄'} ${d.numero} — ${escapeHtml(c.nom)||'Client sans nom'}</div>
           <div class="meta">${frDate(d.dateCreation)} · ${fcfa(t.total)} <span class="pill ${d.statut}">${statutLabel(d.statut, type)}</span></div>
         </div>
         <div class="actions-row">
@@ -817,24 +1627,34 @@ function renderDevisList(){
       </div>`;
     }).join('');
   }
-  m.innerHTML = `<div class="card"><h2>Vos documents</h2>${listHtml}</div>`;
+  const recherche = mesDocs.length
+    ? champRecherche('rechDocs', 'Rechercher : numéro, client, montant, date…', rechercheDocuments)
+    : '';
+  m.innerHTML = `<div class="card"><h2>Vos documents</h2>${recherche}${listHtml}
+    <div class="aucun-resultat" id="aucunDoc">Aucun document ne correspond à cette recherche.</div></div>`;
   m.querySelectorAll('[data-open-dev]').forEach(b=>b.addEventListener('click',()=>openDevisEditor(b.dataset.openDev)));
+  brancherRecherche(m, 'rechDocs', '.list-item[data-recherche]', 'aucunDoc', v=>{ rechercheDocuments = v; });
 }
 
 /* ============================ DEVIS : ÉDITEUR ============================ */
-function openDevisEditor(id, type){
+function openDevisEditor(id, type, draft){
   let devis;
-  if(id){ devis = devisList.find(d=>d.id===id); }
+  if(draft){ devis = draft; }          // reprise d'un brouillon (session restaurée)
+  else if(id){ devis = devisList.find(d=>d.id===id); }
   else {
     const docType = type || 'devis';
     devis = {
-      id:uid(), type: docType, numero: nextNumero(docType), dateCreation: todayISO(), validiteJours:30,
+      id:uid(), type: docType, entrepriseId: activeEntrepriseId, numero: nextNumero(docType, activeEntrepriseId), dateCreation: todayISO(), validiteJours:30,
       client:{nom:'',adresse:'',cp:'',ville:'',tel:'',email:''},
       lignes:[], remisePct:0, mainOeuvre:0, notes:'', statut:'brouillon'
     };
   }
   if(!devis.type) devis.type = 'devis'; // compatibilité anciens documents créés avant cette mise à jour
   editingDevisId = devis.id;
+  majBarreEntreprise();
+  // Le bouton rond + (nouveau document) n'a pas de sens pendant l'édition et masquait
+  // le bas du formulaire ; il réapparaît au retour sur la liste (voir render()).
+  document.getElementById('fabBtn').style.display='none';
 
   const m=document.getElementById('main');
   m.innerHTML = `
@@ -878,6 +1698,7 @@ function openDevisEditor(id, type){
       <div class="actions-row">
         <button class="btn btn-ghost btn-sm" id="addFromLib">+ Depuis la bibliothèque</button>
         <button class="btn btn-ghost btn-sm" id="addFree">+ Ligne libre</button>
+        <button class="btn btn-ghost btn-sm" id="addSection">+ Section (en-tête)</button>
       </div>
       <div class="row2" style="margin-top:12px;">
         <div class="field">
@@ -916,25 +1737,46 @@ function openDevisEditor(id, type){
         <div class="table-scroll">
         <table class="lignes-table">
           <thead>
-            <tr><th class="col-desig">Désignation</th><th class="col-num">Quantité</th><th class="col-num">Prix unitaire</th><th class="col-num">Prix total</th><th class="col-rm"></th></tr>
+            <tr><th class="col-desig">Désignation</th><th class="col-num col-qte"><span class="long">Quantité</span><span class="court">Qté</span></th><th class="col-num col-pu"><span class="long">Prix unitaire</span><span class="court">P.U.</span></th><th class="col-num col-tot"><span class="long">Prix total</span><span class="court">Total</span></th><th class="col-rm"></th></tr>
           </thead>
           <tbody>
-          ${devis.lignes.map((l,i)=>`
+          ${devis.lignes.map((l,i)=>{
+            if(l.type==='section'){
+              return `
+              <tr data-row="${i}" data-section="1">
+                <td colspan="4" class="col-section" style="background:#F5F7FA;padding:8px;">
+                  <input type="text" data-li="${i}" data-f="titre" value="${escapeHtml(l.titre||'')}" placeholder="Titre de la section (ex : Fillerie, Tubage, Appareillage...)" style="font-weight:700;text-transform:uppercase;letter-spacing:.03em;background:transparent;border:none;width:100%;padding:4px;">
+                </td>
+                <td class="col-rm">
+                  <button class="insert-line" data-ins="${i}" title="Insérer une ligne ici">+</button>
+                  <button class="remove-line" data-rm="${i}">&times;</button>
+                </td>
+              </tr>`;
+            }
+            return `
             <tr data-row="${i}">
-              <td class="col-desig"><input type="text" data-li="${i}" data-f="designation" value="${escapeHtml(l.designation)}" placeholder="Désignation"></td>
-              <td class="col-num"><input type="number" step="0.01" data-li="${i}" data-f="qte" value="${l.qte}"></td>
-              <td class="col-num"><input type="number" step="1" data-li="${i}" data-f="prixUnitaire" value="${l.prixUnitaire}"></td>
-              <td class="col-num total-cell">${fcfa(l.qte*l.prixUnitaire)}</td>
-              <td class="col-rm"><button class="remove-line" data-rm="${i}">&times;</button></td>
-            </tr>
-          `).join('')}
+              <td class="col-desig"><input type="text" class="desig-ligne" data-li="${i}" data-f="designation" placeholder="Désignation" value="${escapeHtml(l.designation)}" title="${escapeHtml(l.designation)}"></td>
+              <td class="col-num col-qte" data-label="Qté"><input type="number" inputmode="decimal" step="0.01" data-li="${i}" data-f="qte" value="${l.qte}"></td>
+              <td class="col-num col-pu" data-label="Prix unitaire"><input type="number" inputmode="numeric" step="1" data-li="${i}" data-f="prixUnitaire" value="${l.prixUnitaire}"></td>
+              <td class="col-num col-tot total-cell" data-label="Total">${totalLigneHtml(l)}</td>
+              <td class="col-rm">
+                <button class="insert-line" data-ins="${i}" title="Insérer une ligne ici">+</button>
+                <button class="remove-line" data-rm="${i}">&times;</button>
+              </td>
+            </tr>`;
+          }).join('')}
           </tbody>
         </table>
         </div>`;
+      c.querySelectorAll('input.desig-ligne').forEach(ta=>{
+        // Entrée valide la saisie au lieu de créer un retour à la ligne dans la désignation
+        ta.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); ta.blur(); } });
+      });
       c.querySelectorAll('input[data-li]').forEach(inp=>{
         inp.addEventListener('input', ()=>{
           const i=parseInt(inp.dataset.li), f=inp.dataset.f;
           const v = inp.value;
+          if(inp.classList.contains('desig-ligne')) inp.title = v;
           devis.lignes[i][f] = (f==='qte'||f==='prixUnitaire') ? (parseFloat(v)||0) : v;
           recalcRowTotals();
           renderTotals();
@@ -944,16 +1786,25 @@ function openDevisEditor(id, type){
         devis.lignes.splice(parseInt(b.dataset.rm),1);
         renderLignes(); renderTotals();
       }));
+      c.querySelectorAll('[data-ins]').forEach(b=>b.addEventListener('click',()=>{
+        const pos = parseInt(b.dataset.ins)+1;
+        devis.lignes.splice(pos, 0, {type:'ligne', designation:'', qte:1, prixUnitaire:0});
+        renderLignes(); renderTotals();
+        // Place le focus directement dans la désignation de la ligne insérée
+        const newInput = document.querySelector(`[data-li="${pos}"][data-f="designation"]`);
+        if(newInput) newInput.focus();
+      }));
     }
   }
 
   function recalcRowTotals(){
     const c=document.getElementById('lignesContainer');
     c.querySelectorAll('tr[data-row]').forEach(row=>{
+      if(row.dataset.section) return;
       const i=parseInt(row.dataset.row);
       const l=devis.lignes[i];
       const cell=row.querySelector('.total-cell');
-      if(cell) cell.textContent = fcfa(l.qte*l.prixUnitaire);
+      if(cell) cell.innerHTML = totalLigneHtml(l);
     });
   }
 
@@ -977,31 +1828,45 @@ function openDevisEditor(id, type){
   if(mainOeuvreInput) mainOeuvreInput.addEventListener('input', renderTotals);
 
   document.getElementById('addFree').addEventListener('click', ()=>{
-    devis.lignes.push({designation:'', qte:1, prixUnitaire:0});
+    devis.lignes.push({type:'ligne', designation:'', qte:1, prixUnitaire:0});
     renderLignes(); renderTotals();
   });
 
+  document.getElementById('addSection').addEventListener('click', ()=>{
+    devis.lignes.push({type:'section', titre:''});
+    renderLignes(); renderTotals();
+    // Place le focus directement dans le champ titre de la nouvelle section
+    const inputs = document.querySelectorAll('#lignesContainer input[data-f="titre"]');
+    const last = inputs[inputs.length-1];
+    if(last) last.focus();
+  });
+
   document.getElementById('addFromLib').addEventListener('click', ()=>{
-    if(articles.length===0){ alert("Votre bibliothèque d'articles est vide. Ajoutez-en depuis l'onglet Articles."); return; }
+    const mesArticles = articlesActifs();
+    if(mesArticles.length===0){ alert("Votre bibliothèque d'articles est vide. Ajoutez-en depuis l'onglet Articles."); return; }
     const overlay=document.createElement('div');
     overlay.className='modal-overlay';
+    const tries = [...mesArticles].sort((a,b)=>normaliser(a.designation).localeCompare(normaliser(b.designation)));
     overlay.innerHTML = `
       <div class="modal">
         <div class="modal-header"><h2>Choisir un article</h2><button class="close-x">&times;</button></div>
-        ${articles.map(a=>`
-          <div class="list-item" data-pick="${a.id}" style="cursor:pointer;">
+        ${champRecherche('rechLib', 'Rechercher un article…', '')}
+        ${tries.map(a=>`
+          <div class="list-item" data-pick="${a.id}" data-recherche="${escapeHtml(rechercheArticle(a))}" style="cursor:pointer;">
             <div><div class="name">${escapeHtml(a.designation)}</div><div class="meta">${fcfa(a.prixUnitaire)}</div></div>
             <button class="btn btn-amber btn-sm">Ajouter</button>
           </div>
         `).join('')}
+        <div class="aucun-resultat" id="aucunLib">Aucun article ne correspond. Vous pouvez le saisir avec « + Ligne libre ».</div>
       </div>`;
     document.body.appendChild(overlay);
+    brancherRecherche(overlay, 'rechLib', '.list-item[data-recherche]', 'aucunLib');
     overlay.querySelector('.close-x').addEventListener('click', ()=>overlay.remove());
     overlay.addEventListener('click',(e)=>{ if(e.target===overlay) overlay.remove(); });
     overlay.querySelectorAll('[data-pick]').forEach(item=>{
       item.addEventListener('click', ()=>{
         const a=articles.find(x=>x.id===item.dataset.pick);
-        devis.lignes.push({designation:a.designation, qte:1, prixUnitaire:a.prixUnitaire});
+        devis.lignes.push({type:'ligne', designation:a.designation, qte:1, prixUnitaire:a.prixUnitaire});
         overlay.remove();
         renderLignes(); renderTotals();
       });
@@ -1023,10 +1888,17 @@ function openDevisEditor(id, type){
     devis.mainOeuvre = moEl ? (parseFloat(moEl.value)||0) : 0;
   }
 
+  // Permet à saveSession() de récupérer le brouillon en cours à tout moment.
+  window._editorGet = function(){
+    try{ collectDevisFromForm(); }catch(e){ return null; }
+    return { id: id || null, devis: JSON.parse(JSON.stringify(devis)) };
+  };
+  saveSession();
+
   document.getElementById('saveDevisBtn').addEventListener('click', ()=>{
     collectDevisFromForm();
     const exists = devisList.some(d=>d.id===devis.id);
-    if(!exists){ devisList.push(devis); if(!id){ seq[devis.type]=(seq[devis.type]||1)+1; save(KEY_SEQ, seq); } }
+    if(!exists){ devisList.push(devis); if(!id){ incrSeq(devis.type, devis.entrepriseId); } }
     else devisList = devisList.map(d=>d.id===devis.id?devis:d);
     save(KEY_DEV, devisList);
     showToast((devis.type==='facture'?'Facture':'Devis')+' enregistré(e)');
@@ -1035,7 +1907,7 @@ function openDevisEditor(id, type){
   document.getElementById('pdfDevisBtn').addEventListener('click', ()=>{
     collectDevisFromForm();
     const exists = devisList.some(d=>d.id===devis.id);
-    if(!exists){ devisList.push(devis); if(!id){ seq[devis.type]=(seq[devis.type]||1)+1; save(KEY_SEQ, seq); } }
+    if(!exists){ devisList.push(devis); if(!id){ incrSeq(devis.type, devis.entrepriseId); } }
     else devisList = devisList.map(d=>d.id===devis.id?devis:d);
     save(KEY_DEV, devisList);
     printDevis(devis);
@@ -1044,7 +1916,7 @@ function openDevisEditor(id, type){
   document.getElementById('dupDevisBtn').addEventListener('click', ()=>{
     collectDevisFromForm();
     const copy = JSON.parse(JSON.stringify(devis));
-    copy.id=uid(); copy.numero=nextNumero(copy.type); seq[copy.type]=(seq[copy.type]||1)+1; save(KEY_SEQ, seq);
+    copy.id=uid(); copy.numero=nextNumero(copy.type, copy.entrepriseId); incrSeq(copy.type, copy.entrepriseId);
     copy.dateCreation=todayISO(); copy.statut='brouillon';
     devisList.push(copy); save(KEY_DEV, devisList);
     showToast((copy.type==='facture'?'Facture':'Devis')+' dupliqué(e)');
@@ -1059,7 +1931,7 @@ function openDevisEditor(id, type){
     }
   });
 
-  document.getElementById('backDevisBtn').addEventListener('click', ()=>{ currentTab='devis'; render(); });
+  document.getElementById('backDevisBtn').addEventListener('click', ()=>{ editingDevisId=null; currentTab='devis'; render(); });
 }
 
 /* ============================ IMPRESSION / PDF ============================ */
@@ -1067,6 +1939,11 @@ function printDevis(devis){
   const t=computeTotals(devis);
   const p=document.getElementById('printArea');
   const dateValidite = new Date(new Date(devis.dateCreation+'T00:00:00').getTime() + devis.validiteJours*86400000);
+  // Bascule temporaire : imprime toujours avec l'entreprise sous laquelle CE document
+  // a été créé, même si une autre entreprise est active depuis. Restaurée juste après.
+  const entrepriseActivePrecedente = entreprise;
+  entreprise = entrepriseForDevis(devis);
+  appliquerTheme(entreprise.theme || 'navy');
   p.innerHTML = `
     <div class="doc-page">
       <div class="doc-header">
@@ -1104,14 +1981,18 @@ function printDevis(devis){
       <table class="doc-table">
         <thead><tr><th>Désignation</th><th>Quantité</th><th>Prix unitaire</th><th>Prix total</th></tr></thead>
         <tbody>
-          ${devis.lignes.map(l=>`
+          ${devis.lignes.map(l=>{
+            if(l.type==='section'){
+              return `<tr><td colspan="4" style="background:#EAF1F8;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--navy);font-size:11px;padding:8px;">${escapeHtml(l.titre||'')}</td></tr>`;
+            }
+            return `
             <tr>
               <td>${escapeHtml(l.designation)}</td>
               <td>${l.qte}</td>
               <td>${fcfa(l.prixUnitaire)}</td>
               <td>${fcfa(l.qte*l.prixUnitaire)}</td>
-            </tr>
-          `).join('')}
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
 
@@ -1124,28 +2005,48 @@ function printDevis(devis){
         </table>
       </div>
 
-      ${(devis.notes||entreprise.mentions) ? `<div class="doc-notes">${escapeHtml([devis.notes, entreprise.mentions].filter(Boolean).join('\\n\\n'))}</div>` : ''}
+      ${(devis.notes||entreprise.mentions) ? `<div class="doc-notes">${escapeHtml([devis.notes, entreprise.mentions].filter(Boolean).join('\n\n'))}</div>` : ''}
 
       <div class="doc-signature">
         <div class="box">${devis.type==='facture'?'Facture établie par':'Devis établi par'}<br><br>${escapeHtml(entreprise.nom)}
           ${(entreprise.tampon || entreprise.signature) ? `<div style="margin-top:8px;display:flex;gap:10px;align-items:flex-end;">
+            ${entreprise.tampon ? `<img src="${entreprise.tampon}" style="width:4cm;height:4cm;object-fit:contain;">` : ''}
             ${entreprise.signature ? `<img src="${entreprise.signature}" style="max-height:50px;max-width:120px;object-fit:contain;">` : ''}
-            ${entreprise.tampon ? `<img src="${entreprise.tampon}" style="max-height:60px;max-width:90px;object-fit:contain;">` : ''}
           </div>` : ''}
         </div>
         <div class="box">${devis.type==='facture'?'Reçu pour acquit — Date et signature :':'Bon pour accord — Date et signature du client :'}<br><br><br></div>
       </div>
 
-      <div class="doc-footer">
+      ${(entreprise.nom || entreprise.identifiantFiscal || entreprise.assurance) ? `<div class="doc-footer">
         ${escapeHtml(entreprise.nom)} ${entreprise.identifiantFiscal?('- '+escapeHtml(entreprise.identifiantFiscal)):''} ${entreprise.assurance?('- Assurance : '+escapeHtml(entreprise.assurance)):''}
-      </div>
+      </div>` : ''}
     </div>
   `;
-  triggerPrint();
+  entreprise = entrepriseActivePrecedente; // restaure l'entreprise active après impression
+  appliquerTheme(entreprise.theme || 'navy');
+  waitForImages(p).then(triggerPrint);
+}
+
+// Attend que toutes les images (logo, tampon, signature) soient réellement chargées
+// dans la zone d'impression avant de lancer le PDF — évite qu'elles manquent à l'appel
+// sur les appareils plus lents ou avec des images plus lourdes. Sécurité : n'attend
+// jamais plus de 1,5 seconde, pour ne jamais bloquer l'impression indéfiniment.
+function waitForImages(container){
+  const imgs = Array.from(container.querySelectorAll('img'));
+  if(imgs.length === 0) return Promise.resolve();
+  const loaders = imgs.map(img=>{
+    if(img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise(resolve=>{
+      img.addEventListener('load', resolve, {once:true});
+      img.addEventListener('error', resolve, {once:true});
+    });
+  });
+  const timeout = new Promise(resolve=>setTimeout(resolve, 1500));
+  return Promise.race([Promise.all(loaders), timeout]);
 }
 
 // ⚠️ URL de votre service de vérification de suspension (même serveur Render que FedaPay).
-const REVOCATION_CHECK_URL = 'https://devispro-fedapay-2.onrender.com/api/check-revoked';
+const REVOCATION_CHECK_URL = 'https://devispro.hasnemtech.com/api/check-revoked';
 
 function checkRevocationSilently(license){
   if(!license || !license.deviceCode) return;
@@ -1185,9 +2086,9 @@ function checkRevocationSilently(license){
   const trialValid = !license.activated && today <= trialEndISO;
 
   if(paidValid){
-    render();
+    restaurerSession() || render();
   } else if(trialValid){
-    render();
+    restaurerSession() || render();
     showTrialBanner(license);
   } else {
     const nextRenewalIndex = (license.renewalIndex||0) + 1;
