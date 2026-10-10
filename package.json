@@ -1,6 +1,6 @@
 {
   "name": "devis-pro",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "description": "Devis Pro - application de devis hors-ligne",
   "main": "main.js",
   "author": "Votre entreprise",
@@ -23,6 +23,7 @@
     "publish": null,
     "files": [
       "main.js",
+      "preload.js",
       "electricien-devis.html",
       "icon.png"
     ],
