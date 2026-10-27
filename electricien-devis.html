@@ -65,6 +65,21 @@
   .apercu-paper{width:794px;background:#fff;transform-origin:top left;box-shadow:0 2px 12px rgba(0,0,0,.45);}
   .apercu-actions{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--border);flex:none;flex-wrap:wrap;}
   .apercu-actions .btn{flex:1;min-width:120px;}
+  /* ---------- Compte / synchronisation ---------- */
+  .cloud-btn{position:absolute;top:16px;right:14px;width:42px;height:42px;border-radius:12px;border:none;
+    background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .cloud-btn i{position:absolute;bottom:7px;right:7px;width:10px;height:10px;border-radius:50%;border:2px solid var(--navy);background:#8A97A6;}
+  .cloud-btn.ok i{background:#2FBF71;}
+  .cloud-btn.busy i{background:#F5B93D;animation:pulse 1s infinite;}
+  .cloud-btn.err i{background:#E5533D;}
+  @keyframes pulse{50%{opacity:.3;}}
+  .conflit-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .conflit-v{border:1px solid var(--border);border-radius:9px;padding:9px;font-size:12.5px;line-height:1.5;background:#FAFBFC;}
+  .conflit-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+  .conflit-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  @media (max-width:480px){ .conflit-grille{grid-template-columns:1fr;} }
+  .envoi-info{font-size:12.5px;color:var(--muted);background:#F8FAFC;border:1px solid var(--border);border-radius:9px;padding:10px;margin-bottom:12px;word-break:break-all;}
+  input:disabled,select:disabled,textarea:disabled{background:#F5F7FA;color:#16212E;opacity:1;-webkit-text-fill-color:#16212E;}
   .ent-bar{display:none;align-items:center;gap:8px;padding:8px 16px;background:#EEF2F7;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--muted);}
   .ent-bar select{flex:1;min-width:0;padding:7px 8px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;color:var(--navy);background:#fff;}
   main{padding:16px;max-width:720px;margin:0 auto;}
@@ -81,7 +96,7 @@
   .field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px;}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-  input[type=text],input[type=number],input[type=email],input[type=tel],input[type=date],select,textarea{
+  input[type=text],input[type=number],input[type=email],input[type=tel],input[type=date],input[type=password],select,textarea{
     width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:8px;
     font-size:14.5px;background:#fff;color:var(--text);font-family:inherit;
   }
@@ -807,7 +822,12 @@ function load(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch(e){ return fallback; }
 }
-function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+const CLES_SYNCHRONISEES = ['ed_entreprises', 'ed_articles', 'ed_devis', 'ed_seq_ent'];
+function save(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
+  // Toute modification des données déclenche une synchro (si un compte est connecté)
+  if(CLES_SYNCHRONISEES.includes(key) && window.__syncPret) planifierSync();
+}
 
 function entrepriseVierge(){
   return {
@@ -970,6 +990,46 @@ function buildWhatsappLink(license, nextRenewalIndex, statusKind){
 // ⚠️ Lien vers votre serveur de paiement en ligne (formulaire + FedaPay + livraison automatique).
 const ONLINE_PAYMENT_LINK = 'https://devispro.hasnemtech.com';
 
+/* ---------- Mode lecture seule (abonnement inactif) ----------
+   Sans abonnement actif, le client garde l'accès à tous ses anciens documents
+   (consultation, aperçu, impression, envoi) mais ne peut plus en créer, en
+   dupliquer ni en modifier. */
+let lectureSeule = false;
+function licenceCourante(){ return load(KEY_LICENSE, {}); }
+function ouvrirActivation(statusKind){
+  const lic = licenceCourante();
+  const kind = statusKind || (lic.activated ? 'license_expired' : 'trial_expired');
+  showLockScreen(lic, (lic.renewalIndex||0) + 1, kind, lic.expiryDate, false);
+}
+function activerLectureSeule(statusKind, sansRender){
+  lectureSeule = true;
+  lectureSeule_kind = statusKind;
+  const tb = document.getElementById('trialBanner'); if(tb) tb.remove();
+  let bar = document.getElementById('readOnlyBanner');
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'readOnlyBanner';
+    bar.className = 'no-print';
+    bar.style.cssText = 'background:#C4432B;color:#fff;font-size:12.5px;font-weight:700;padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;text-align:center;';
+    document.body.insertBefore(bar, document.body.firstChild);
+  }
+  const raison = statusKind==='revoked' ? 'Licence suspendue' : (statusKind==='license_expired' ? 'Abonnement expiré' : 'Essai gratuit terminé');
+  bar.innerHTML = `<span>🔒 ${raison} — lecture seule : vos documents restent consultables, création impossible.</span><button id="readOnlyActivateBtn" style="background:#fff;color:#C4432B;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;">Réactiver</button>`;
+  document.getElementById('readOnlyActivateBtn').addEventListener('click', ()=>ouvrirActivation(statusKind));
+  if(!sansRender && typeof render==='function') render();
+}
+let lectureSeule_kind = null;
+function quitterLectureSeule(){
+  lectureSeule = false;
+  const bar = document.getElementById('readOnlyBanner'); if(bar) bar.remove();
+}
+// Renvoie true (et propose de réactiver) si l'action est interdite en lecture seule.
+function bloqueEnLectureSeule(){
+  if(!lectureSeule) return false;
+  ouvrirActivation(lectureSeule_kind);
+  return true;
+}
+
 function showTrialBanner(license){
   const existing = document.getElementById('trialBanner');
   if(existing) existing.remove();
@@ -1066,6 +1126,7 @@ function showLockScreen(license, nextRenewalIndex, statusKind, expiryDate, manda
       overlay.remove();
       const banner = document.getElementById('trialBanner');
       if(banner) banner.remove();
+      quitterLectureSeule();
       render();
     } else {
       document.getElementById('licenseError').textContent = 'Identifiant ou clé invalide. Vérifiez la saisie.';
@@ -1201,6 +1262,7 @@ document.getElementById('fabBtn').addEventListener('click', ()=>{
 });
 
 function openTypeChoiceModal(){
+  if(bloqueEnLectureSeule()) return;
   const overlay=document.createElement('div');
   overlay.className='modal-overlay';
   overlay.innerHTML = `
@@ -1218,7 +1280,11 @@ function openTypeChoiceModal(){
   overlay.querySelectorAll('[data-choice]').forEach(b=>b.addEventListener('click', ()=>{
     const type = b.dataset.choice;
     overlay.remove();
-    openDevisEditor(null, type);
+    // Compte connecté : on récupère d'abord la numérotation à jour des autres appareils
+    if(compteActuel() && navigator.onLine!==false){
+      showToast('Numérotation…');
+      Promise.race([synchroniser(), new Promise(r=>setTimeout(r, 4000))]).finally(()=>openDevisEditor(null, type));
+    } else openDevisEditor(null, type);
   }));
 }
 
@@ -2310,6 +2376,7 @@ function openDevisEditor(id, type, draft){
   });
 
   document.getElementById('pdfDevisBtn').addEventListener('click', ()=>{
+    if(lectureSeule){ ouvrirApercu(devis); return; }
     collectDevisFromForm();
     const exists = devisList.some(d=>d.id===devis.id);
     if(!exists){ devisList.push(devis); if(!id){ incrSeq(devis.type, devis.entrepriseId); } }
@@ -2337,6 +2404,20 @@ function openDevisEditor(id, type, draft){
   });
 
   document.getElementById('backDevisBtn').addEventListener('click', ()=>{ editingDevisId=null; currentTab='devis'; render(); });
+
+  // Lecture seule : consultation uniquement (aperçu, impression, envoi restent possibles)
+  if(lectureSeule){
+    const m = document.getElementById('main');
+    m.querySelectorAll('input, select, textarea').forEach(el=>{ el.disabled = true; });
+    m.querySelectorAll('button').forEach(b=>{
+      if(b.id!=='pdfDevisBtn' && b.id!=='backDevisBtn') b.style.display='none';
+    });
+    const info = document.createElement('div');
+    info.className = 'card';
+    info.style.cssText = 'background:#FBE7E2;border-color:#F0CFC7;color:#8A2E1C;font-size:13px;font-weight:600;';
+    info.textContent = '🔒 Lecture seule : ce document peut être consulté, imprimé et envoyé, mais plus modifié tant que l\'abonnement n\'est pas réactivé.';
+    m.insertBefore(info, m.firstChild);
+  }
 }
 
 /* ============================ IMPRESSION / PDF ============================ */
@@ -2480,7 +2561,8 @@ function checkRevocationSilently(license){
           const existingBanner = document.getElementById('trialBanner');
           if(existingBanner) existingBanner.remove();
           const nextRenewalIndex = (license.renewalIndex||0) + 1;
-          showLockScreen(license, nextRenewalIndex, 'revoked', license.expiryDate, true);
+          activerLectureSeule('revoked');
+          showLockScreen(license, nextRenewalIndex, 'revoked', license.expiryDate, false);
         }
       })
       .catch(()=>{ /* pas d'internet ou serveur injoignable : on ignore silencieusement, l'app reste hors-ligne fonctionnelle */ });
@@ -2751,7 +2833,7 @@ function ouvrirApercu(devis){
   o.innerHTML = `
     <div class="apercu-top">
       <button class="ap-close" id="apFermer" aria-label="Fermer l'aperçu">&times;</button>
-      <div class="ap-title">Aperçu — ${escapeHtml(devis.numero)}</div>
+      <div class="ap-title">Aperçu — ${escapeHtml(devis.numero)}${(compteActuel() && !etatSync().shadow['devis:'+devis.id]) ? `<small style="display:block;font-size:11px;color:#F5B93D;font-weight:600;">⚠️ Pas encore synchronisé : numéro confirmé à la prochaine connexion</small>` : ''}</div>
     </div>
     <div class="apercu-scroll" id="apScroll"><div class="apercu-stage" id="apStage"><div class="apercu-paper" id="apPaper">${buildDocHtml(devis)}</div></div></div>
     <div class="apercu-actions">
@@ -2791,6 +2873,466 @@ function ouvrirApercu(devis){
   lier('apSend','partager'); lier('apSave','enregistrer'); lier('apMail','email');
 }
 
+/* ============================ COMPTE & SYNCHRONISATION (SaaS) ============================ */
+// Les données restent d'abord sur l'appareil (l'app marche hors-ligne). Quand le client
+// est connecté à son compte, chaque modification est envoyée au serveur, et les
+// modifications faites sur ses autres appareils (téléphone, PC, web) sont récupérées.
+const SAAS_API = window.DEVISPRO_API || 'https://devispro.hasnemtech.com/api/saas';
+const KEY_COMPTE = 'ed_compte';      // { email, token }
+const KEY_SYNC = 'ed_sync';          // { cursor, shadow, revs, lastSync, premiere }
+const KEY_CONFLITS = 'ed_conflits';  // versions en conflit en attente du choix de l'utilisateur
+let syncEnCours = false, syncErreur = '', syncTimer = null;
+
+function compteActuel(){ return load(KEY_COMPTE, null); }
+function etatSync(){ const e = load(KEY_SYNC, { cursor:0, shadow:{}, revs:{}, lastSync:0, premiere:true }); if(!e.revs) e.revs = {}; return e; }
+function conflitsEnAttente(){ return load(KEY_CONFLITS, []); }
+function rawSave(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+// Empreinte rapide d'un objet (pour détecter ce qui a changé depuis la dernière synchro)
+// JSON aux clés triées : l'ordre des champs renvoyé par le serveur peut différer
+function jsonCanonique(v){
+  if(v === undefined) return 'null';
+  if(v === null || typeof v !== 'object') return JSON.stringify(v);
+  if(Array.isArray(v)) return '[' + v.map(jsonCanonique).join(',') + ']';
+  return '{' + Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+jsonCanonique(v[k])).join(',') + '}';
+}
+function empreinte(obj){
+  const str = jsonCanonique(obj);
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for(let i=0;i<str.length;i++){ const c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
+  h1 = Math.imul(h1^(h1>>>16),2246822507) ^ Math.imul(h2^(h2>>>13),3266489909);
+  h2 = Math.imul(h2^(h2>>>16),2246822507) ^ Math.imul(h1^(h1>>>13),3266489909);
+  return (h2>>>0).toString(36) + (h1>>>0).toString(36);
+}
+function entrepriseEstVierge(e){
+  return e && !e.nom && !e.logo && !e.tel && !e.adresse && !e.email && !devisList.some(d=>d.entrepriseId===e.id);
+}
+function collecterLocal(){
+  const m = {};
+  devisList.forEach(d=>{ if(d && d.id) m['devis:'+d.id] = {kind:'devis', id:d.id, data:d}; });
+  entreprises.forEach(e=>{ if(e && e.id) m['entreprise:'+e.id] = {kind:'entreprise', id:e.id, data:e}; });
+  articles.forEach(a=>{ if(a && a.id) m['article:'+a.id] = {kind:'article', id:a.id, data:a}; });
+  // Numérotation : un compteur par entreprise
+  Object.keys(seqParEnt||{}).forEach(eid=>{ m['meta:seq:'+eid] = {kind:'meta', id:'seq:'+eid, data:seqParEnt[eid]}; });
+  return m;
+}
+
+function planifierSync(delai){
+  if(!compteActuel()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(()=>synchroniser(), delai===undefined ? 2500 : delai);
+}
+
+function appliquerChangementDistant(c){
+  if(c.kind==='meta'){
+    if(String(c.id).startsWith('seq:') && c.data && !c.deleted){
+      const sq = seqPour(String(c.id).slice(4));
+      ['devis','facture'].forEach(t=>{ sq[t] = Math.max(sq[t]||1, c.data[t]||1); });
+    }
+    return;
+  }
+  const liste = c.kind==='devis' ? devisList : c.kind==='entreprise' ? entreprises : c.kind==='article' ? articles : null;
+  if(!liste) return;
+  const idx = liste.findIndex(x=>x && x.id===c.id);
+  if(c.deleted){ if(idx>=0) liste.splice(idx,1); return; }
+  if(!c.data) return;
+  if(idx>=0){
+    // Mise à jour EN PLACE : "entreprise" reste une référence vivante vers l'objet du tableau
+    const cible = liste[idx];
+    Object.keys(cible).forEach(k=>{ if(!(k in c.data)) delete cible[k]; });
+    Object.assign(cible, c.data);
+  } else {
+    liste.push(c.data);
+  }
+}
+
+async function appelSaas(chemin, corps, token){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), 30000);
+  try{
+    const res = await fetch(SAAS_API + chemin, {
+      method:'POST', signal: ctrl.signal,
+      headers: Object.assign({'Content-Type':'application/json'}, token ? {'Authorization':'Bearer '+token} : {}),
+      body: JSON.stringify(corps || {})
+    });
+    let data = {};
+    try{ data = await res.json(); }catch(e){}
+    return { ok: res.ok, status: res.status, data };
+  } finally { clearTimeout(t); }
+}
+
+async function synchroniser(){
+  const compte = compteActuel();
+  if(!compte || syncEnCours) return;
+  if(typeof navigator!=='undefined' && navigator.onLine===false){ syncErreur='Hors connexion'; majIndicateurSync(); return; }
+  syncEnCours = true; syncErreur = ''; majIndicateurSync();
+  const renumerotes = [];
+  let nouveauxConflits = 0;
+  try{
+    const etat = etatSync();
+    let conflits = conflitsEnAttente();
+    const enConflit = new Set(conflits.map(c=>c.kind+':'+c.id));
+    const local = collecterLocal();
+    // Première synchro de cet appareil : on n'envoie pas l'entreprise vide créée par défaut
+    let vierge = null;
+    if(etat.premiere && entreprises.length===1 && entrepriseEstVierge(entreprises[0])) vierge = entreprises[0];
+
+    const envois = [];
+    const envoyes = {};
+    Object.keys(local).forEach(k=>{
+      if(vierge && k==='entreprise:'+vierge.id) return;
+      if(enConflit.has(k)) return;                       // en attente du choix de l'utilisateur
+      const h = empreinte(local[k].data);
+      if(etat.shadow[k] !== h){ envois.push(Object.assign({baseRev: etat.revs[k]||0}, local[k])); envoyes[k] = h; }
+    });
+    Object.keys(etat.shadow).forEach(k=>{
+      if(!local[k] && !enConflit.has(k)){ const [kind, ...r] = k.split(':'); envois.push({kind, id:r.join(':'), deleted:true, baseRev: etat.revs[k]||0}); envoyes[k] = null; }
+    });
+
+    let cursor = etat.cursor || 0;
+    let i = 0, encore = true, recus = 0;
+    while(i < envois.length || encore){
+      const paquet = envois.slice(i, i+25); i += paquet.length;
+      const r = await appelSaas('/sync', {since: cursor, changes: paquet}, compte.token);
+      if(r.status===401){ deconnecterCompte(false, 'Votre session a expiré. Reconnectez-vous pour reprendre la synchronisation.'); return; }
+      if(!r.ok) throw new Error((r.data && r.data.error) || ('Erreur serveur ('+r.status+')'));
+
+      // Envois acceptés par le serveur
+      (r.data.acks||[]).forEach(a=>{
+        const k = a.kind+':'+a.id;
+        if(a.data){
+          // Le serveur a corrigé le document (numéro déjà utilisé sur un autre appareil)
+          appliquerChangementDistant({kind:a.kind, id:a.id, data:a.data});
+          etat.shadow[k] = empreinte(a.data); recus++;
+          if(a.renumerote) renumerotes.push(a.renumerote);
+        } else if(envoyes[k]===null){ delete etat.shadow[k]; delete etat.revs[k]; }
+        else if(envoyes[k]!==undefined){ etat.shadow[k] = envoyes[k]; }
+        if(a.rev) etat.revs[k] = a.rev;
+      });
+      // Conflits : modifié sur cet appareil ET sur un autre depuis la dernière synchro
+      (r.data.conflicts||[]).forEach(c=>{
+        const k = c.kind+':'+c.id;
+        const actuel = collecterLocal()[k];
+        conflits = conflits.filter(x=>x.kind+':'+x.id!==k);
+        conflits.push(Object.assign({}, c, { localData: actuel ? actuel.data : null }));
+        enConflit.add(k); nouveauxConflits++;
+      });
+
+      const actuel = collecterLocal();
+      (r.data.changes||[]).forEach(c=>{
+        const k = c.kind+':'+c.id;
+        if(enConflit.has(k)) return;
+        // Une modification locale faite pendant la synchro reste prioritaire (elle partira au prochain envoi)
+        const enAttente = actuel[k] ? empreinte(actuel[k].data) !== etat.shadow[k] : false;
+        if(enAttente && c.kind!=='meta') return;
+        appliquerChangementDistant(c);
+        recus++;
+        if(c.deleted){ delete etat.shadow[k]; }
+        else etat.shadow[k] = empreinte(c.data);
+        if(c.rev) etat.revs[k] = c.rev;
+      });
+      cursor = r.data.cursor || cursor;
+      encore = !!r.data.hasMore;
+      if(r.data.email && r.data.email!==compte.email){ compte.email = r.data.email; rawSave(KEY_COMPTE, compte); }
+    }
+
+    if(vierge && entreprises.length>1){
+      const idx = entreprises.indexOf(vierge);
+      if(idx>=0) entreprises.splice(idx,1);
+    }
+    etat.cursor = cursor; etat.lastSync = Date.now(); etat.premiere = false;
+    rawSave(KEY_SYNC, etat);
+    rawSave(KEY_CONFLITS, conflits);
+
+    if(recus>0){
+      rawSave(KEY_DEV, devisList); rawSave(KEY_ENTS, entreprises); rawSave(KEY_ART, articles); rawSave(KEY_SEQ_ENT, seqParEnt);
+      if(!entreprises.find(e=>e.id===activeEntrepriseId)) activeEntrepriseId = entreprises[0].id;
+      rawSave(KEY_ACTIVE_ENT, activeEntrepriseId);
+      entreprise = getActiveEntreprise();
+      appliquerTheme();
+      if(editingDevisId===null && !document.querySelector('.modal-overlay') && !document.getElementById('apercuOverlay')) render();
+    }
+    if(renumerotes.length){
+      alert('Numéro déjà utilisé sur un autre de vos appareils — renuméroté automatiquement :\n\n' +
+        renumerotes.map(x=>'• '+x.ancien+'  →  '+x.nouveau).join('\n') +
+        '\n\nSi vous aviez déjà envoyé ce document au client, renvoyez-lui la version avec le nouveau numéro.');
+    }
+    if(nouveauxConflits>0 && !document.getElementById('conflitsOverlay')) ouvrirConflits();
+    if(Object.keys(seqParEnt||{}).some(eid=>empreinte(seqParEnt[eid]) !== etat.shadow['meta:seq:'+eid])) planifierSync(500);
+  } catch(e){
+    syncErreur = (e && e.name==='AbortError') ? 'Serveur injoignable' : (e && e.message ? e.message : 'Échec de la synchronisation');
+  } finally {
+    syncEnCours = false;
+    majIndicateurSync();
+  }
+}
+
+/* ---------- Résolution des conflits (même élément modifié sur deux appareils) ---------- */
+function resumeElement(kind, data){
+  if(!data) return '<i>🗑 Supprimé</i>';
+  if(kind==='devis'){
+    const t = computeTotals(data);
+    return `<b>${escapeHtml(data.numero||'')}</b> — ${escapeHtml((data.client&&data.client.nom)||'Client sans nom')}<br>
+      ${(data.lignes||[]).filter(l=>l.type!=='section').length} ligne(s) · <b>${fcfa(t.total)}</b><br>
+      Statut : ${statutLabel(data.statut, data.type)}${data.notes ? '<br>Notes : '+escapeHtml(String(data.notes).slice(0,80)) : ''}`;
+  }
+  if(kind==='entreprise') return `<b>${escapeHtml(data.nom||'(sans nom)')}</b><br>${escapeHtml(data.tel||'')} ${escapeHtml(data.ville||'')}`;
+  if(kind==='article') return `<b>${escapeHtml(data.designation||'')}</b><br>${fcfa(data.prixUnitaire||0)}`;
+  return '';
+}
+function libelleKind(c){ return c.kind==='devis' ? ((c.serverData||c.localData||{}).type==='facture'?'Facture':'Devis') : c.kind==='entreprise' ? 'Entreprise' : 'Article'; }
+
+function resoudreConflit(k, choix){
+  let conflits = conflitsEnAttente();
+  const c = conflits.find(x=>x.kind+':'+x.id===k);
+  if(!c) return;
+  const etat = etatSync();
+  if(choix==='moi'){
+    // Ma version gagne : elle repartira vers le serveur à la prochaine synchro
+    etat.revs[k] = c.serverRev;
+    delete etat.shadow[k];
+  } else {
+    // Version de l'autre appareil (et, pour "les deux", copie de la mienne)
+    const copie = (choix==='deux' && c.localData) ? JSON.parse(JSON.stringify(c.localData)) : null;
+    if(c.serverDeleted) appliquerChangementDistant({kind:c.kind, id:c.id, deleted:true});
+    else appliquerChangementDistant({kind:c.kind, id:c.id, data:c.serverData});
+    if(c.serverDeleted) delete etat.shadow[k]; else etat.shadow[k] = empreinte(c.serverData);
+    etat.revs[k] = c.serverRev;
+    if(copie){
+      copie.id = uid();
+      if(c.kind==='devis'){
+        copie.numero = nextNumero(copie.type||'devis', copie.entrepriseId);
+        seqPour(copie.entrepriseId||activeEntrepriseId)[copie.type||'devis'] = (seqPour(copie.entrepriseId||activeEntrepriseId)[copie.type||'devis']||1) + 1;
+        devisList.push(copie);
+      } else if(c.kind==='article'){
+        copie.designation = (copie.designation||'') + ' (copie)';
+        articles.push(copie);
+      }
+    }
+  }
+  conflits = conflits.filter(x=>x.kind+':'+x.id!==k);
+  rawSave(KEY_CONFLITS, conflits);
+  rawSave(KEY_SYNC, etat);
+  rawSave(KEY_DEV, devisList); rawSave(KEY_ENTS, entreprises); rawSave(KEY_ART, articles); rawSave(KEY_SEQ_ENT, seqParEnt);
+  if(!entreprises.find(e=>e.id===activeEntrepriseId)) activeEntrepriseId = entreprises[0].id;
+  entreprise = getActiveEntreprise();
+  appliquerTheme();
+  majIndicateurSync();
+  planifierSync(300);
+}
+
+function ouvrirConflits(){
+  const ancien = document.getElementById('conflitsOverlay'); if(ancien) ancien.remove();
+  const conflits = conflitsEnAttente();
+  if(!conflits.length){ render(); return; }
+  const fmt = (ts)=> ts ? new Date(ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay centre';
+  ov.id = 'conflitsOverlay';
+  ov.innerHTML = `
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-header"><h2>⚠️ Modifié sur deux appareils</h2><button class="close-x">&times;</button></div>
+      <p class="helper" style="font-size:13px;margin-bottom:12px;">Ces éléments ont été modifiés à la fois sur cet appareil et sur un autre de vos appareils. Rien n'a été écrasé : choisissez la version à garder.</p>
+      ${conflits.map(c=>{
+        const k = c.kind+':'+c.id;
+        const deux = (c.kind==='devis' || c.kind==='article') && c.localData && !c.serverDeleted;
+        return `<div class="card" style="padding:12px;">
+          <div style="font-weight:800;color:var(--navy);margin-bottom:8px;">${libelleKind(c)}</div>
+          <div class="conflit-grille">
+            <div class="conflit-v"><div class="conflit-t">📱 Sur cet appareil</div>${resumeElement(c.kind, c.localData)}</div>
+            <div class="conflit-v"><div class="conflit-t">💻 Autre appareil${c.serverUpdatedAt?' · '+fmt(c.serverUpdatedAt):''}</div>${resumeElement(c.kind, c.serverDeleted?null:c.serverData)}</div>
+          </div>
+          <div class="conflit-actions">
+            <button class="btn btn-primary btn-sm" data-k="${escapeHtml(k)}" data-choix="moi">Garder celle de cet appareil</button>
+            <button class="btn btn-ghost btn-sm" data-k="${escapeHtml(k)}" data-choix="autre">Garder l'autre</button>
+            ${deux ? `<button class="btn btn-ghost btn-sm" data-k="${escapeHtml(k)}" data-choix="deux">Garder les deux</button>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('.close-x').addEventListener('click', ()=>ov.remove());
+  ov.querySelectorAll('[data-choix]').forEach(b=>b.addEventListener('click', ()=>{
+    resoudreConflit(b.dataset.k, b.dataset.choix);
+    if(editingDevisId===null) render();
+    ouvrirConflits();
+  }));
+}
+
+function deconnecterCompte(effacer, message){
+  localStorage.removeItem(KEY_COMPTE);
+  localStorage.removeItem(KEY_SYNC);
+  localStorage.removeItem(KEY_CONFLITS);
+  if(effacer){
+    [KEY_DEV, KEY_ART, KEY_ENTS, KEY_SEQ, KEY_SEQ_ENT, KEY_ACTIVE_ENT, KEY_ENT, 'ed_session'].forEach(k=>localStorage.removeItem(k));
+    location.reload();
+    return;
+  }
+  majIndicateurSync();
+  if(message) alert(message);
+}
+
+function tempsDepuis(ts){
+  if(!ts) return 'jamais';
+  const s = Math.round((Date.now()-ts)/1000);
+  if(s<60) return "à l'instant";
+  if(s<3600) return 'il y a ' + Math.round(s/60) + ' min';
+  if(s<86400) return 'il y a ' + Math.round(s/3600) + ' h';
+  return new Date(ts).toLocaleString('fr-FR');
+}
+
+function majIndicateurSync(){
+  const btn = document.getElementById('cloudBtn');
+  if(!btn) return;
+  const compte = compteActuel();
+  let etatCls = 'off', titre = 'Compte : non connecté';
+  if(compte){
+    if(syncEnCours){ etatCls='busy'; titre='Synchronisation…'; }
+    else if(syncErreur){ etatCls='err'; titre='Synchro : '+syncErreur; }
+    else { etatCls='ok'; titre='Synchronisé '+tempsDepuis(etatSync().lastSync); }
+  }
+  const nbConflits = compte ? conflitsEnAttente().length : 0;
+  if(nbConflits){ etatCls='err'; titre = nbConflits + ' élément(s) à vérifier'; }
+  btn.className = 'cloud-btn ' + etatCls;
+  btn.title = titre;
+  let barre = document.getElementById('conflitsBanner');
+  if(nbConflits){
+    if(!barre){
+      barre = document.createElement('div');
+      barre.id = 'conflitsBanner'; barre.className = 'no-print';
+      barre.style.cssText = 'background:#FFF3D9;color:#7A5300;font-size:12.5px;font-weight:700;padding:9px 14px;text-align:center;cursor:pointer;border-bottom:1px solid #F5D58A;';
+      barre.addEventListener('click', ouvrirConflits);
+      const header = document.querySelector('.app-header');
+      header.parentNode.insertBefore(barre, header.nextSibling);
+    }
+    barre.textContent = '⚠️ ' + nbConflits + ' élément(s) modifié(s) sur deux appareils — touchez ici pour choisir la version à garder';
+  } else if(barre) barre.remove();
+  const info = document.getElementById('compteSyncInfo');
+  if(info) info.textContent = titre;
+}
+
+function ouvrirCompte(){
+  const compte = compteActuel();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay centre';
+  if(!compte){
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:420px;">
+        <div class="modal-header"><h2>☁️ Mon compte Devis Pro</h2><button class="close-x">&times;</button></div>
+        <p class="helper" style="font-size:13px;margin-bottom:12px;">Connectez-vous pour sauvegarder vos devis, factures, articles et entreprises en ligne et les retrouver sur tous vos appareils (téléphone, ordinateur, navigateur).</p>
+        <div class="cible-row" style="margin-bottom:12px;">
+          <button class="cible actif" data-mode="login">Se connecter</button>
+          <button class="cible" data-mode="register">Créer un compte</button>
+        </div>
+        <div class="field"><label>E-mail</label>
+        <input type="email" id="cEmail" autocomplete="email" placeholder="vous@exemple.com"></div>
+        <div class="field"><label>Mot de passe</label>
+        <input type="password" id="cPass" autocomplete="current-password" placeholder="6 caractères minimum"></div>
+        <div class="field" id="cPass2Wrap" style="display:none;"><label>Confirmer le mot de passe</label>
+          <input type="password" id="cPass2" autocomplete="new-password"></div>
+        <div id="cErr" style="color:var(--danger);font-size:12.5px;margin-top:10px;display:none;"></div>
+        <button class="btn btn-primary btn-block" id="cGo" style="margin-top:14px;">Se connecter</button>
+        <a href="https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Bonjour, j'ai oublié le mot de passe de mon compte Devis Pro.")}" target="_blank" rel="noopener" class="helper" style="display:block;text-align:center;margin-top:12px;font-size:12.5px;">Mot de passe oublié ? Contactez-nous sur WhatsApp</a>
+      </div>`;
+  } else {
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:420px;">
+        <div class="modal-header"><h2>☁️ Mon compte</h2><button class="close-x">&times;</button></div>
+        <div class="envoi-info" style="word-break:normal;"><b style="color:var(--navy);">${escapeHtml(compte.email)}</b><br><span id="compteSyncInfo"></span></div>
+        <div style="display:grid;gap:8px;">
+          <button class="btn btn-primary" id="cSyncNow">🔄 Synchroniser maintenant</button>
+          <button class="btn btn-ghost" id="cChangePw">🔑 Changer le mot de passe</button>
+          <button class="btn btn-ghost" id="cLogout">Se déconnecter (garder les données ici)</button>
+          <button class="btn btn-danger" id="cLogoutWipe">Se déconnecter et effacer cet appareil</button>
+        </div>
+        <p class="helper" style="margin-top:12px;font-size:12px;">Vos données restent disponibles hors-ligne et se synchronisent automatiquement dès que la connexion revient. La licence reste propre à chaque appareil.</p>
+      </div>`;
+  }
+  document.body.appendChild(overlay);
+  const fermer = ()=>overlay.remove();
+  overlay.querySelector('.close-x').addEventListener('click', fermer);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) fermer(); });
+
+  if(!compte){
+    let mode = 'login';
+    overlay.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{
+      mode = b.dataset.mode;
+      overlay.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('actif', x===b));
+      overlay.querySelector('#cPass2Wrap').style.display = mode==='register' ? 'block' : 'none';
+      overlay.querySelector('#cGo').textContent = mode==='register' ? 'Créer mon compte' : 'Se connecter';
+    }));
+    const err = (m)=>{ const e=overlay.querySelector('#cErr'); e.textContent=m; e.style.display=m?'block':'none'; };
+    const go = async ()=>{
+      const email = overlay.querySelector('#cEmail').value.trim();
+      const password = overlay.querySelector('#cPass').value;
+      if(!email || !password){ err('Renseignez votre e-mail et votre mot de passe.'); return; }
+      if(mode==='register' && password !== overlay.querySelector('#cPass2').value){ err('Les deux mots de passe ne correspondent pas.'); return; }
+      const btn = overlay.querySelector('#cGo'); btn.disabled = true; btn.textContent = 'Connexion…'; err('');
+      try{
+        const r = await appelSaas(mode==='register' ? '/register' : '/login', {email, password});
+        if(!r.ok){ err((r.data && r.data.error) || 'Erreur ('+r.status+')'); return; }
+        rawSave(KEY_COMPTE, {email: r.data.email, token: r.data.token});
+        rawSave(KEY_SYNC, {cursor:0, shadow:{}, revs:{}, lastSync:0, premiere:true});
+        localStorage.removeItem(KEY_CONFLITS);
+        fermer();
+        showToast('Connecté — synchronisation…');
+        await synchroniser();
+        if(!syncErreur) showToast('Données synchronisées ✅');
+      } catch(e){
+        err("Impossible de joindre le serveur. Vérifiez votre connexion internet.");
+      } finally {
+        btn.disabled = false; btn.textContent = mode==='register' ? 'Créer mon compte' : 'Se connecter';
+      }
+    };
+    overlay.querySelector('#cGo').addEventListener('click', go);
+    overlay.querySelector('#cPass').addEventListener('keydown', e=>{ if(e.key==='Enter' && mode==='login') go(); });
+  } else {
+    majIndicateurSync();
+    overlay.querySelector('#cSyncNow').addEventListener('click', async ()=>{ await synchroniser(); showToast(syncErreur ? ('⚠️ '+syncErreur) : 'Synchronisé ✅'); });
+    overlay.querySelector('#cChangePw').addEventListener('click', async ()=>{
+      const ancien = prompt('Mot de passe actuel :'); if(ancien===null) return;
+      const nouveau = prompt('Nouveau mot de passe (6 caractères minimum) :'); if(nouveau===null) return;
+      try{
+        const r = await appelSaas('/password', {oldPassword: ancien, newPassword: nouveau}, compte.token);
+        if(!r.ok){ alert((r.data && r.data.error) || 'Erreur'); return; }
+        compte.token = r.data.token; rawSave(KEY_COMPTE, compte);
+        showToast('Mot de passe changé ✅');
+      }catch(e){ alert('Impossible de joindre le serveur.'); }
+    });
+    overlay.querySelector('#cLogout').addEventListener('click', ()=>{
+      if(!confirm('Se déconnecter ? Vos documents restent sur cet appareil mais ne seront plus synchronisés.')) return;
+      fermer(); deconnecterCompte(false);
+      showToast('Déconnecté');
+    });
+    overlay.querySelector('#cLogoutWipe').addEventListener('click', ()=>{
+      if(!confirm('Se déconnecter et effacer tous les documents de CET appareil ? Ils restent sauvegardés dans votre compte.')) return;
+      // Dernière synchro pour ne rien perdre, puis effacement
+      synchroniser().finally(()=>{
+        if(syncErreur && !confirm('La dernière synchronisation a échoué ('+syncErreur+'). Effacer quand même ?')) return;
+        deconnecterCompte(true);
+      });
+    });
+  }
+}
+
+(function initSync(){
+  window.__syncPret = true;
+  const header = document.querySelector('.app-header');
+  if(header){
+    const b = document.createElement('button');
+    b.id = 'cloudBtn'; b.type = 'button'; b.className = 'cloud-btn off';
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.4 9.1 4.5 4.5 0 0 0 7 18Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg><i></i>';
+    b.addEventListener('click', ouvrirCompte);
+    header.appendChild(b);
+  }
+  majIndicateurSync();
+  window.addEventListener('online', ()=>planifierSync(500));
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') planifierSync(800); });
+  setInterval(()=>{ if(document.visibilityState!=='hidden') synchroniser(); }, 90000);
+  setInterval(majIndicateurSync, 30000);
+  planifierSync(1500);
+})();
+
 /* ============================ INITIALISATION ============================ */
 (function initApp(){
   let license = load(KEY_LICENSE, null);
@@ -2812,9 +3354,13 @@ function ouvrirApercu(devis){
     restaurerSession() || render();
     showTrialBanner(license);
   } else {
+    // Abonnement inactif : lecture seule (anciens documents consultables, création impossible)
     const nextRenewalIndex = (license.renewalIndex||0) + 1;
     const statusKind = license.activated ? 'license_expired' : 'trial_expired';
-    showLockScreen(license, nextRenewalIndex, statusKind, license.expiryDate, true);
+    lectureSeule = true;
+    restaurerSession() || render();
+    activerLectureSeule(statusKind, true);
+    showLockScreen(license, nextRenewalIndex, statusKind, license.expiryDate, false);
   }
 
   // Vérification de suspension : silencieuse, non bloquante, ignorée si pas d'internet.
