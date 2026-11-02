@@ -56,51 +56,6 @@
     color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;
   }
   nav.tabs button.active{color:var(--navy);border-bottom-color:var(--amber);}
-  @media (max-width:420px){ nav.tabs button{font-size:12.5px;padding:12px 2px;} }
-  /* ---------- Rapports ---------- */
-  .rap-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
-  .rap-ctrl select,.rap-ctrl input{width:auto;flex:1;min-width:150px;}
-  .rap-mode{flex:1;min-width:180px;}
-  .rap-ent{font-weight:700;color:var(--navy);flex:1;min-width:150px;}
-  .rap-titre{font-weight:800;color:var(--navy);font-size:15px;margin:4px 0 10px;}
-  .rap-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
-  .kpi{background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px;}
-  .kpi span{font-size:12px;color:var(--muted);font-weight:600;}
-  .kpi b{font-size:19px;color:var(--navy);}
-  .kpi small{font-size:11.5px;color:var(--muted);}
-  .kpi.ok b{color:#1F7A45;} .kpi.warn b{color:#B26A00;}
-  .rap-bloc{background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;}
-  .rap-bloc h3{font-size:14px;color:var(--navy);margin:0 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .rap-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  .rap-2col .rap-bloc{margin-bottom:14px;}
-  @media (max-width:700px){ .rap-2col{grid-template-columns:1fr;gap:0;} }
-  .rap-scroll{overflow-x:auto;}
-  .rap-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-  .rap-table th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);padding:6px;border-bottom:1px solid var(--border);white-space:nowrap;}
-  .rap-table td{padding:7px 6px;border-bottom:1px solid #EDEFF2;vertical-align:top;}
-  .rap-table .r{text-align:right;white-space:nowrap;}
-  .rap-table tr.tot td{font-weight:800;color:var(--navy);border-top:2px solid var(--navy);}
-  .rap-leg{font-weight:600;color:var(--muted);font-size:11.5px;display:flex;align-items:center;gap:5px;}
-  .rap-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;}
-  .c1{background:var(--navy);} .c2{background:var(--amber);}
-  .rap-chart{display:flex;align-items:flex-end;gap:4px;height:160px;}
-  .rap-chart .col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;gap:4px;}
-  .rap-chart .bars{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;border-bottom:1px solid var(--border);}
-  .rap-chart .bars i{display:block;width:42%;max-width:16px;border-radius:3px 3px 0 0;min-height:1px;}
-  .rap-chart .col span{font-size:10px;color:var(--muted);}
-  .rap-chart .col.sel span{color:var(--navy);font-weight:800;}
-  .rap-chart .col.sel .bars{background:rgba(0,0,0,.04);border-radius:4px 4px 0 0;}
-  .rap-journal .ev{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #EDEFF2;font-size:12.5px;}
-  .rap-journal .dt{color:var(--muted);white-space:nowrap;flex:none;width:118px;}
-  .rap-journal .tx{flex:1;min-width:0;}
-  @media (max-width:520px){
-    .rap-journal .ev{flex-direction:column;gap:2px;}
-    .rap-journal .dt{width:auto;font-size:11.5px;}
-    .rap-scroll .rap-table{min-width:520px;}
-    .rap-scroll .rap-table td:first-child{white-space:nowrap;}
-  }
-  .rapport-print .rap-bloc,.rapport-print .kpi{break-inside:avoid;page-break-inside:avoid;}
-  .rapport-print .rap-scroll{overflow:visible;}
   .apercu-overlay{position:fixed;top:0;right:0;bottom:0;left:0;z-index:300;background:#4B5057;display:flex;flex-direction:column;}
   .apercu-top{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--navy);color:#fff;flex:none;}
   .apercu-top .ap-close{background:rgba(255,255,255,.16);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:22px;line-height:1;cursor:pointer;}
@@ -1017,10 +972,35 @@ function normalizeKey(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 function computeEntrepriseSlotsKey(deviceCode, nbEntreprises, secret){
   return computeActivationKey(deviceCode, 0, 'ENT'+String(nbEntreprises||1), secret);
 }
+// Android / iPhone : le code est calculé à partir d'un identifiant propre à l'appareil
+// (il survit donc à une réinstallation). Ailleurs : tirage aléatoire, comme avant.
+function identifiantNatifAppareil(){
+  try{
+    if(window.Android && typeof window.Android.getDeviceId === 'function'){
+      const id = String(window.Android.getDeviceId() || '');
+      if(id.length >= 8) return 'A|' + id;
+    }
+    if(window.DEVISPRO_DEVICE_ID && String(window.DEVISPRO_DEVICE_ID).length >= 8) return 'I|' + window.DEVISPRO_DEVICE_ID;
+  }catch(e){}
+  return '';
+}
+function hash53(str){
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for(let i=0;i<str.length;i++){ const c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
+  h1 = Math.imul(h1^(h1>>>16),2246822507) ^ Math.imul(h2^(h2>>>13),3266489909);
+  h2 = Math.imul(h2^(h2>>>16),2246822507) ^ Math.imul(h1^(h1>>>13),3266489909);
+  return 4294967296 * (2097151 & h2) + (h1>>>0);
+}
 function generateDeviceCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans caractères ambigus (0/O, 1/I)
   let code = '';
-  for(let i=0;i<8;i++){ code += chars[Math.floor(Math.random()*chars.length)]; }
+  const natif = identifiantNatifAppareil();
+  if(natif){
+    let h = hash53('devispro-appareil|' + natif);
+    for(let i=0;i<8;i++){ code += chars[h % 32]; h = Math.floor(h / 32); }
+  } else {
+    for(let i=0;i<8;i++){ code += chars[Math.floor(Math.random()*chars.length)]; }
+  }
   return code.match(/.{1,4}/g).join('-');
 }
 
@@ -1070,7 +1050,35 @@ function infosAppareil(){
   if(window.Android) platform = 'Android';
   else if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosPrint) platform = 'iPhone/iPad';
   else if(window.desktopApp) platform = /Mac/i.test(navigator.platform||navigator.userAgent) ? 'Mac' : 'Windows';
-  return { deviceCode: lic.deviceCode||'', platform, activated: !!lic.activated, planType: lic.planType||'', expiryDate: lic.expiryDate||'', trialStart: lic.trialStart||'' };
+  return { deviceCode: lic.deviceCode||'', platform, activated: !!lic.activated, planType: lic.planType||'', expiryDate: lic.expiryDate||'', trialStart: lic.trialStart||'', renewalIndex: lic.renewalIndex||0, activatedDate: lic.activatedDate||'', maxEnt: (typeof maxEntreprises==='number' ? maxEntreprises : 1) };
+}
+// Restaure la licence de CET appareil depuis le compte (réinstallation de l'app) :
+// l'état de la licence ne peut que progresser, il n'est jamais remplacé par un état plus ancien.
+function appliquerLicenceCompte(l){
+  if(!l || typeof l !== 'object') return;
+  if(l.maxEnt && l.maxEnt > maxEntreprises){ maxEntreprises = l.maxEnt; localStorage.setItem(KEY_MAX_ENT, JSON.stringify(maxEntreprises)); }
+  if(!l.expiryDate) return;
+  const lic = load(KEY_LICENSE, {});
+  const idxSrv = parseInt(l.renewalIndex,10) || 0, idxLoc = parseInt(lic.renewalIndex,10) || 0;
+  const plusRecente = !lic.activated || idxSrv > idxLoc || (idxSrv === idxLoc && l.expiryDate > (lic.expiryDate||''));
+  if(!plusRecente) return;
+  lic.activated = true;
+  lic.renewalIndex = idxSrv || idxLoc || 1;
+  lic.planType = l.planType || lic.planType || '1A';
+  lic.activatedDate = l.activatedDate || lic.activatedDate || '';
+  lic.expiryDate = l.expiryDate;
+  lic.key = lic.key || 'RESTAUREE-COMPTE';
+  localStorage.setItem(KEY_LICENSE, JSON.stringify(lic));
+  const tb = document.getElementById('trialBanner'); if(tb) tb.remove();
+  if(etatLicence()==='expire'){
+    // licence connue mais échue : on rafraîchit l'écran de verrouillage (bon numéro de renouvellement)
+    verrouillerApplication('license_expired');
+  } else {
+    const ls = document.getElementById('lockScreen'); if(ls) ls.remove();
+    const fab = document.getElementById('fabBtn'); if(fab) fab.style.display = '';
+    window.__verrouille = false;
+    render();
+  }
 }
 // L'essai gratuit est unique par COMPTE : on applique la date de début d'essai du compte
 // (la plus ancienne). Réinstaller l'app ou vider le navigateur ne relance pas d'essai.
@@ -1154,9 +1162,11 @@ function showLockScreen(license, nextRenewalIndex, statusKind, expiryDate, manda
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 0 0-7.75 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" stroke="#fff" stroke-width="1.7"/><path d="M8.5 8.7c.2-.5.5-.5.8-.5h.6c.2 0 .4 0 .6.4.2.5.7 1.6.7 1.8.1.1.1.3 0 .4-.1.2-.2.3-.3.5-.2.2-.3.3-.1.6.7 1.2 1.5 1.9 2.6 2.4.2.1.4.1.5-.1.2-.2.6-.7.8-.9.2-.2.3-.2.6-.1.2.1 1.5.7 1.8.9.2.1.4.2.4.3.1.3.1.9-.2 1.4-.3.5-1.4 1-1.9 1-1.3.1-2.7-.5-4.3-1.8-1.9-1.5-3-3.2-3.2-3.6-.2-.4-.9-1.5-.9-2.7 0-1.2.6-1.7.8-1.9Z" fill="#fff"/></svg>
         Contacter via WhatsApp
       </a>
+      <button type="button" id="lockSauvegarde" style="margin-top:10px;background:none;border:none;color:#5B6B7C;font-size:12.5px;text-decoration:underline;cursor:pointer;">💾 Sauvegarder mes données dans un fichier</button>
     </div>
   `;
   document.body.appendChild(overlay);
+  document.getElementById('lockSauvegarde').addEventListener('click', ()=>{ if(typeof sauvegarderDansFichier==='function') sauvegarderDansFichier(); });
 
   if(!mandatory){
     const closeBtn = document.getElementById('lockCloseBtn');
@@ -1357,217 +1367,6 @@ function render(){
   else renderEntreprise();
   majBarreEntreprise();
   saveSession();
-}
-
-/* ============================ JOURNAL DES INTERACTIONS ============================ */
-// Chaque document garde un petit historique (création, changement de statut, envoi,
-// impression). Il est synchronisé avec le document et alimente l'onglet Rapports.
-function journaliser(devis, action, detail){
-  if(!devis) return;
-  if(!Array.isArray(devis.journal)) devis.journal = [];
-  devis.journal.push(Object.assign({ t: new Date().toISOString(), a: action }, detail || {}));
-  if(devis.journal.length > 60) devis.journal = devis.journal.slice(-60);
-}
-function enregistrerJournal(devis, action, detail){
-  const d = devisList.find(x=>x.id===devis.id);
-  if(!d) return;
-  journaliser(d, action, detail);
-  if(d !== devis) devis.journal = d.journal;
-  save(KEY_DEV, devisList);
-}
-function libelleAction(ev, type){
-  if(ev.a==='cree') return type==='facture' ? 'Facture créée' : 'Devis créé';
-  if(ev.a==='statut') return 'Statut → ' + statutLabel(ev.s, type);
-  if(ev.a==='envoi') return ev.m==='email' ? 'Envoyé par e-mail' : (ev.m==='enregistrer' ? 'PDF enregistré' : 'Envoyé (PDF)');
-  if(ev.a==='impression') return 'Imprimé';
-  return ev.a;
-}
-
-/* ============================ RAPPORTS ============================ */
-let rapportEnt = null;          // id d'entreprise ou '__toutes'
-let rapportMode = 'mois';      // 'mois' ou 'annee'
-let rapportMois = new Date().toISOString().slice(0,7);
-let rapportAnnee = String(new Date().getFullYear());
-const MOIS_COURTS = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
-
-function docsDuRapport(entId){
-  return devisList.filter(d=> entId==='__toutes' ? true : d.entrepriseId===entId);
-}
-function dansPeriode(d){
-  const dt = d.dateCreation || '';
-  return rapportMode==='mois' ? dt.slice(0,7)===rapportMois : dt.slice(0,4)===rapportAnnee;
-}
-function libellePeriode(){
-  if(rapportMode==='annee') return 'Année ' + rapportAnnee;
-  const [y,m] = rapportMois.split('-');
-  return ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][parseInt(m,10)-1] + ' ' + y;
-}
-function statsDocs(docs){
-  const s = { devis:{n:0,m:0, st:{brouillon:[0,0],envoye:[0,0],accepte:[0,0],refuse:[0,0]}},
-              facture:{n:0,m:0, st:{brouillon:[0,0],envoye:[0,0],accepte:[0,0],refuse:[0,0]}} };
-  docs.forEach(d=>{
-    const type = d.type==='facture' ? 'facture' : 'devis';
-    const tot = computeTotals(d).total;
-    const st = s[type].st[d.statut] ? d.statut : 'brouillon';
-    s[type].n++; s[type].m += tot;
-    s[type].st[st][0]++; s[type].st[st][1] += tot;
-  });
-  const decides = s.devis.st.accepte[0] + s.devis.st.refuse[0];
-  s.tauxAcceptation = decides ? Math.round(s.devis.st.accepte[0]*100/decides) : null;
-  s.encaisse = s.facture.st.accepte[1];
-  s.aEncaisser = s.facture.st.envoye[1] + s.facture.st.refuse[1] + s.facture.st.brouillon[1];
-  s.panier = (s.devis.n + s.facture.n) ? (s.devis.m + s.facture.m) / (s.devis.n + s.facture.n) : 0;
-  return s;
-}
-function clientsDuRapport(docs){
-  const map = {};
-  docs.forEach(d=>{
-    const nom = ((d.client && d.client.nom) || '').trim() || 'Client sans nom';
-    const k = normaliser ? normaliser(nom) : nom.toLowerCase();
-    if(!map[k]) map[k] = { nom, n:0, m:0, acceptes:0, derniere:'', tel:(d.client&&d.client.tel)||'' };
-    const c = map[k];
-    c.n++; c.m += computeTotals(d).total;
-    if(d.statut==='accepte') c.acceptes++;
-    const evs = (d.journal||[]).map(e=>e.t.slice(0,10));
-    const der = [d.dateCreation||''].concat(evs).sort().pop();
-    if(der > c.derniere) c.derniere = der;
-  });
-  return Object.values(map).sort((a,b)=>b.m-a.m);
-}
-function evenementsDuRapport(docs){
-  const evs = [];
-  docs.forEach(d=>{
-    const j = Array.isArray(d.journal) && d.journal.length ? d.journal : [{ t:(d.dateCreation||'')+'T00:00:00', a:'cree' }];
-    j.forEach(e=>evs.push({ e, d }));
-  });
-  return evs.filter(x=>{
-    const t = x.e.t || '';
-    return rapportMode==='mois' ? t.slice(0,7)===rapportMois : t.slice(0,4)===rapportAnnee;
-  }).sort((a,b)=> (b.e.t||'').localeCompare(a.e.t||'')).slice(0,40);
-}
-function nomEntreprise(id){ const e = entreprises.find(x=>x.id===id); return e ? (e.nom || '(sans nom)') : '—'; }
-
-function htmlRapport(pourImpression){
-  const entId = rapportEnt;
-  const tous = docsDuRapport(entId);
-  const docs = tous.filter(dansPeriode);
-  const s = statsDocs(docs);
-  const pct = (a,b)=> b ? Math.round(a*100/b) : 0;
-
-  // Évolution sur 12 mois de l'année
-  const annee = rapportMode==='mois' ? rapportMois.slice(0,4) : rapportAnnee;
-  const parMois = MOIS_COURTS.map((_,i)=>{
-    const cle = annee + '-' + String(i+1).padStart(2,'0');
-    const ds = tous.filter(d=>(d.dateCreation||'').slice(0,7)===cle);
-    return { cle, devis: ds.filter(d=>d.type!=='facture').reduce((a,d)=>a+computeTotals(d).total,0),
-             fact: ds.filter(d=>d.type==='facture').reduce((a,d)=>a+computeTotals(d).total,0) };
-  });
-  const maxM = Math.max(1, ...parMois.map(x=>Math.max(x.devis, x.fact)));
-
-  const ligneStatut = (type, st)=>{
-    const [n,m] = s[type].st[st];
-    return `<tr><td><span class="pill ${st}">${statutLabel(st, type)}</span></td><td class="r">${n}</td><td class="r">${fcfa(m)}</td><td class="r">${pct(n, s[type].n)} %</td></tr>`;
-  };
-  const tableStatuts = (type, titre)=>`
-    <div class="rap-bloc"><h3>${titre}</h3>
-      <table class="rap-table"><tr><th>Statut</th><th class="r">Nb</th><th class="r">Montant</th><th class="r">Part</th></tr>
-      ${['brouillon','envoye','accepte','refuse'].map(st=>ligneStatut(type, st)).join('')}
-      <tr class="tot"><td>Total</td><td class="r">${s[type].n}</td><td class="r">${fcfa(s[type].m)}</td><td class="r">100 %</td></tr></table>
-    </div>`;
-
-  const parEntreprise = entId==='__toutes' && entreprises.length > 1 ? `
-    <div class="rap-bloc"><h3>🏢 Par entreprise</h3>
-      <div class="rap-scroll"><table class="rap-table">
-        <tr><th>Entreprise</th><th class="r">Devis</th><th class="r">Montant devis</th><th class="r">Factures</th><th class="r">Facturé</th><th class="r">Encaissé</th><th class="r">Accept.</th></tr>
-        ${entreprises.map(e=>{
-          const se = statsDocs(docs.filter(d=>d.entrepriseId===e.id));
-          return `<tr><td><b>${escapeHtml(e.nom||'(sans nom)')}</b></td><td class="r">${se.devis.n}</td><td class="r">${fcfa(se.devis.m)}</td><td class="r">${se.facture.n}</td><td class="r">${fcfa(se.facture.m)}</td><td class="r">${fcfa(se.encaisse)}</td><td class="r">${se.tauxAcceptation===null?'—':se.tauxAcceptation+' %'}</td></tr>`;
-        }).join('')}
-      </table></div>
-    </div>` : '';
-
-  const clients = clientsDuRapport(docs).slice(0, pourImpression ? 20 : 10);
-  const evs = evenementsDuRapport(tous).slice(0, pourImpression ? 25 : 15);
-
-  return `
-    <div class="rap-kpis">
-      <div class="kpi"><span>📄 Devis</span><b>${s.devis.n}</b><small>${fcfa(s.devis.m)}</small></div>
-      <div class="kpi"><span>🧾 Factures</span><b>${s.facture.n}</b><small>${fcfa(s.facture.m)}</small></div>
-      <div class="kpi ok"><span>✅ Encaissé</span><b>${fcfa(s.encaisse)}</b><small>factures payées</small></div>
-      <div class="kpi warn"><span>⏳ À encaisser</span><b>${fcfa(s.aEncaisser)}</b><small>factures non payées</small></div>
-      <div class="kpi"><span>🎯 Taux d'acceptation</span><b>${s.tauxAcceptation===null?'—':s.tauxAcceptation+' %'}</b><small>devis acceptés / décidés</small></div>
-      <div class="kpi"><span>🧮 Montant moyen</span><b>${fcfa(s.panier)}</b><small>par document</small></div>
-    </div>
-
-    <div class="rap-bloc"><h3>📈 Évolution ${annee} <small class="rap-leg"><i class="c1"></i> Devis <i class="c2"></i> Factures</small></h3>
-      <div class="rap-chart">
-        ${parMois.map((x,i)=>`<div class="col ${(rapportMode==='mois' && x.cle===rapportMois)?'sel':''}" title="${MOIS_COURTS[i]} : devis ${fcfa(x.devis)} · factures ${fcfa(x.fact)}">
-          <div class="bars"><i class="c1" style="height:${Math.round(x.devis*100/maxM)}%"></i><i class="c2" style="height:${Math.round(x.fact*100/maxM)}%"></i></div>
-          <span>${MOIS_COURTS[i]}</span></div>`).join('')}
-      </div>
-    </div>
-
-    <div class="rap-2col">${tableStatuts('devis','📄 Devis par statut')}${tableStatuts('facture','🧾 Factures par statut')}</div>
-    ${parEntreprise}
-
-    <div class="rap-bloc"><h3>👥 Interactions par client</h3>
-      ${clients.length ? `<div class="rap-scroll"><table class="rap-table">
-        <tr><th>Client</th><th class="r">Documents</th><th class="r">Montant</th><th class="r">Acceptés / payés</th><th class="r">Dernière interaction</th></tr>
-        ${clients.map(c=>`<tr><td><b>${escapeHtml(c.nom)}</b>${c.tel?`<br><small>${escapeHtml(c.tel)}</small>`:''}</td><td class="r">${c.n}</td><td class="r">${fcfa(c.m)}</td><td class="r">${c.acceptes}</td><td class="r">${frDate(c.derniere)}</td></tr>`).join('')}
-      </table></div>` : '<div class="helper">Aucun document sur cette période.</div>'}
-    </div>
-
-    <div class="rap-bloc"><h3>🕒 Activité de la période</h3>
-      ${evs.length ? `<div class="rap-journal">${evs.map(x=>`
-        <div class="ev"><span class="dt">${frDate((x.e.t||'').slice(0,10))}${(x.e.t||'').slice(11,16) && (x.e.t||'').slice(11,16)!=='00:00' ? ' '+(x.e.t||'').slice(11,16) : ''}</span>
-          <span class="tx"><b>${escapeHtml(x.d.numero||'')}</b> — ${escapeHtml((x.d.client&&x.d.client.nom)||'Client sans nom')} · ${libelleAction(x.e, x.d.type)}${entId==='__toutes'&&entreprises.length>1?` <small>(${escapeHtml(nomEntreprise(x.d.entrepriseId))})</small>`:''}</span></div>`).join('')}</div>`
-        : '<div class="helper">Aucune activité sur cette période.</div>'}
-    </div>`;
-}
-
-function renderRapports(){
-  const m = document.getElementById('main');
-  if(!rapportEnt || (rapportEnt!=='__toutes' && !entreprises.some(e=>e.id===rapportEnt))) rapportEnt = activeEntrepriseId;
-  const annees = Array.from(new Set(devisList.map(d=>(d.dateCreation||'').slice(0,4)).filter(Boolean).concat([String(new Date().getFullYear())]))).sort().reverse();
-  m.innerHTML = `
-    <div class="card rap-filtres">
-      <h2>📊 Rapports</h2>
-      <div class="rap-ctrl">
-        ${entreprises.length > 1 ? `<select id="rapEnt">
-          <option value="__toutes" ${rapportEnt==='__toutes'?'selected':''}>Toutes les entreprises</option>
-          ${entreprises.map(e=>`<option value="${e.id}" ${e.id===rapportEnt?'selected':''}>${escapeHtml(e.nom)||'(sans nom)'}</option>`).join('')}
-        </select>` : `<div class="rap-ent">🏢 ${escapeHtml(entreprise.nom)||'Votre entreprise'}</div>`}
-        <div class="cible-row rap-mode">
-          <button class="cible ${rapportMode==='mois'?'actif':''}" data-mode="mois">Mensuel</button>
-          <button class="cible ${rapportMode==='annee'?'actif':''}" data-mode="annee">Annuel</button>
-        </div>
-        ${rapportMode==='mois'
-          ? `<input type="month" id="rapMois" value="${rapportMois}">`
-          : `<select id="rapAnnee">${annees.map(a=>`<option ${a===rapportAnnee?'selected':''}>${a}</option>`).join('')}</select>`}
-      </div>
-      <div class="rap-titre">${libellePeriode()} · ${rapportEnt==='__toutes' ? 'Toutes les entreprises' : escapeHtml(nomEntreprise(rapportEnt))}</div>
-      <button class="btn btn-ghost btn-sm" id="rapPrint">🖨️ Imprimer / PDF du rapport</button>
-    </div>
-    <div id="rapContenu">${htmlRapport(false)}</div>`;
-
-  const sel = document.getElementById('rapEnt');
-  if(sel) sel.addEventListener('change', e=>{ rapportEnt = e.target.value; renderRapports(); });
-  m.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{ rapportMode = b.dataset.mode; if(rapportMode==='annee') rapportAnnee = rapportMois.slice(0,4); renderRapports(); }));
-  const mi = document.getElementById('rapMois'); if(mi) mi.addEventListener('change', e=>{ if(e.target.value){ rapportMois = e.target.value; renderRapports(); } });
-  const an = document.getElementById('rapAnnee'); if(an) an.addEventListener('change', e=>{ rapportAnnee = e.target.value; renderRapports(); });
-  document.getElementById('rapPrint').addEventListener('click', imprimerRapport);
-}
-
-function imprimerRapport(){
-  if(window.__verrouille || etatLicence()==='expire') return;
-  const ent = rapportEnt==='__toutes' ? entreprise : (entreprises.find(e=>e.id===rapportEnt) || entreprise);
-  const p = document.getElementById('printArea');
-  p.innerHTML = `<div class="doc-page rapport-print">
-    <div class="doc-header"><div><div class="ent-block"><div class="ent-name">${rapportEnt==='__toutes' ? 'Toutes les entreprises' : escapeHtml(ent.nom||'')}</div></div></div>
-      <div class="doc-title"><h2>RAPPORT</h2><div class="num">${libellePeriode()}</div><div class="num">Édité le ${frDate(todayISO())}</div></div></div>
-    ${htmlRapport(true)}
-  </div>`;
-  triggerPrint();
 }
 
 /* ============================ CHANGEMENT D'ENTREPRISE (barre rapide) ============================ */
@@ -2623,17 +2422,12 @@ function openDevisEditor(id, type, draft){
     devis.dateCreation=document.getElementById('d_date').value || todayISO();
     devis.validiteJours=parseInt(document.getElementById('d_validite').value)||30;
     devis.notes=document.getElementById('d_notes').value;
+    const statutAvant = devis.statut;
     devis.statut=document.getElementById('d_statut').value;
+    if(statutAvant !== devis.statut) noterInteraction(devis, 'statut', devis.statut, false);
     devis.remisePct=parseFloat(document.getElementById('d_remise').value)||0;
     const moEl = document.getElementById('d_mainoeuvre');
     devis.mainOeuvre = moEl ? (parseFloat(moEl.value)||0) : 0;
-  }
-
-  // Journal des interactions : création et changements de statut
-  let statutJournalise = devisList.some(d=>d.id===devis.id) ? devis.statut : null;
-  function journaliserEdition(){
-    if(statutJournalise === null){ journaliser(devis, 'cree'); statutJournalise = 'brouillon'; }
-    if(devis.statut !== statutJournalise){ journaliser(devis, 'statut', { s: devis.statut }); statutJournalise = devis.statut; }
   }
 
   // Permet à saveSession() de récupérer le brouillon en cours à tout moment.
@@ -2645,9 +2439,8 @@ function openDevisEditor(id, type, draft){
 
   document.getElementById('saveDevisBtn').addEventListener('click', ()=>{
     collectDevisFromForm();
-    journaliserEdition();
     const exists = devisList.some(d=>d.id===devis.id);
-    if(!exists){ devisList.push(devis); if(!id){ incrSeq(devis.type, devis.entrepriseId); } }
+    if(!exists){ noterInteraction(devis, 'cree', '', false); devisList.push(devis); if(!id){ incrSeq(devis.type, devis.entrepriseId); } }
     else devisList = devisList.map(d=>d.id===devis.id?devis:d);
     save(KEY_DEV, devisList);
     showToast((devis.type==='facture'?'Facture':'Devis')+' enregistré(e)');
@@ -2655,9 +2448,8 @@ function openDevisEditor(id, type, draft){
 
   document.getElementById('pdfDevisBtn').addEventListener('click', ()=>{
     collectDevisFromForm();
-    journaliserEdition();
     const exists = devisList.some(d=>d.id===devis.id);
-    if(!exists){ devisList.push(devis); if(!id){ incrSeq(devis.type, devis.entrepriseId); } }
+    if(!exists){ noterInteraction(devis, 'cree', '', false); devisList.push(devis); if(!id){ incrSeq(devis.type, devis.entrepriseId); } }
     else devisList = devisList.map(d=>d.id===devis.id?devis:d);
     save(KEY_DEV, devisList);
     ouvrirApercu(devis);
@@ -2667,7 +2459,7 @@ function openDevisEditor(id, type, draft){
     collectDevisFromForm();
     const copy = JSON.parse(JSON.stringify(devis));
     copy.id=uid(); copy.numero=nextNumero(copy.type, copy.entrepriseId); incrSeq(copy.type, copy.entrepriseId);
-    copy.dateCreation=todayISO(); copy.statut='brouillon';
+    copy.dateCreation=todayISO(); copy.statut='brouillon'; copy.historique=[]; noterInteraction(copy, 'cree', '', false);
     devisList.push(copy); save(KEY_DEV, devisList);
     showToast((copy.type==='facture'?'Facture':'Devis')+' dupliqué(e)');
     openDevisEditor(copy.id);
@@ -2779,7 +2571,11 @@ function buildDocHtml(devis){
 
 function printDevis(devis){
   if(window.__verrouille || etatLicence()==='expire') return;
-  try{ enregistrerJournal(devis, 'impression'); }catch(e){}
+  noterInteraction(devis, 'impression');
+  printDevisBrut(devis);
+}
+function printDevisBrut(devis){
+  if(window.__verrouille || etatLicence()==='expire') return;
   const p = document.getElementById('printArea');
   // Le thème de l'entreprise du document doit être actif pendant l'impression
   const precedente = entreprise;
@@ -3049,7 +2845,13 @@ function messageEnvoi(devis){
 }
 
 // mode : 'partager' (feuille de partage / navigateur), 'enregistrer' ou 'email' (ordinateur)
+// Enregistre l'interaction dans le journal du document une fois l'envoi réellement lancé
 async function envoyerPdf(devis, mode){
+  const res = await envoyerPdfBrut(devis, mode);
+  if(res !== 'annule') noterInteraction(devis, mode === 'email' ? 'email' : 'pdf');
+  return res;
+}
+async function envoyerPdfBrut(devis, mode){
   if(window.__verrouille || etatLicence()==='expire') throw new Error('Licence inactive');
   const pdf = await genererPdf(devis);
   const m = messageEnvoi(devis);
@@ -3064,7 +2866,8 @@ async function envoyerPdf(devis, mode){
     }
     if(window.desktopApp && typeof window.desktopApp.sharePdf === 'function'){
       const r = await window.desktopApp.sharePdf({ base64:pdf.base64, fileName:pdf.fileName, subject:m.subject, text:m.text, email:m.email, action: mode==='email' ? 'email' : 'save' });
-      if(r && r.saved) showToast('PDF enregistré' + (mode==='email' ? ' — joignez-le à votre e-mail' : ''));
+      if(r && r.canceled) return 'annule';
+      if(r && (r.ok || r.saved)) showToast('PDF enregistré' + (mode==='email' ? ' — joignez-le à votre e-mail' : ''));
       return 'bureau';
     }
     const file = new File([pdf.blob], pdf.fileName, { type:'application/pdf' });
@@ -3133,7 +2936,7 @@ function ouvrirApercu(devis){
     const b = o.querySelector('#'+id); if(!b) return;
     b.addEventListener('click', async ()=>{
       const ancien = b.innerHTML; b.disabled = true; b.textContent = 'Préparation du PDF…';
-      try{ const r = await envoyerPdf(devis, mode); if(r && r!=='annule') enregistrerJournal(devis, 'envoi', { m: mode }); }
+      try{ await envoyerPdf(devis, mode); }
       catch(e){ console.error(e); showToast('Impossible de créer le PDF : ' + (e && e.message ? e.message : 'erreur')); }
       b.disabled = false; b.innerHTML = ancien;
     });
@@ -3301,6 +3104,7 @@ async function synchroniser(){
       });
       cursor = r.data.cursor || cursor;
       encore = !!r.data.hasMore;
+      if(r.data.licence) appliquerLicenceCompte(r.data.licence);
       if(r.data.trialStart) appliquerEssaiCompte(r.data.trialStart);
       if(r.data.email && r.data.email!==compte.email){ compte.email = r.data.email; rawSave(KEY_COMPTE, compte); }
     }
@@ -3518,6 +3322,8 @@ function ouvrirCompte(){
       </div>`;
   }
   document.body.appendChild(overlay);
+  overlay.querySelector('.modal').insertAdjacentHTML('beforeend', htmlSectionSauvegarde());
+  brancherSectionSauvegarde(overlay);
   const fermer = ()=>overlay.remove();
   overlay.querySelector('.close-x').addEventListener('click', fermer);
   overlay.addEventListener('click', e=>{ if(e.target===overlay) fermer(); });
@@ -3541,7 +3347,8 @@ function ouvrirCompte(){
         const r = await appelSaas(mode==='register' ? '/register' : '/login', {email, password, device: infosAppareil()});
         if(!r.ok){ err((r.data && r.data.error) || 'Erreur ('+r.status+')'); return; }
         rawSave(KEY_COMPTE, {email: r.data.email, token: r.data.token});
-        if(r.data.trialStart) appliquerEssaiCompte(r.data.trialStart);
+        if(r.data.licence) appliquerLicenceCompte(r.data.licence);
+      if(r.data.trialStart) appliquerEssaiCompte(r.data.trialStart);
         if(window.__verrouille){ fermer(); return; }
         rawSave(KEY_SYNC, {cursor:0, shadow:{}, revs:{}, lastSync:0, premiere:true});
         localStorage.removeItem(KEY_CONFLITS);
@@ -3603,6 +3410,668 @@ function ouvrirCompte(){
   setInterval(majIndicateurSync, 30000);
   planifierSync(1500);
 })();
+
+/* ============================ SAUVEGARDE DE SECOURS, RAPPEL DE COMPTE ============================ */
+const KEY_RAPPEL_COMPTE = 'ed_rappel_compte';        // dernier rappel affiché (timestamp)
+const KEY_DERNIERE_SAUVEGARDE = 'ed_derniere_sauvegarde'; // dernière sauvegarde par fichier (timestamp)
+const CLES_SAUVEGARDE = [KEY_ENTS, KEY_DEV, KEY_ART, KEY_SEQ, KEY_SEQ_ENT, KEY_ACTIVE_ENT];
+
+function texteEnBase64(texte){
+  return arrayBufferToBase64(new TextEncoder().encode(texte).buffer);
+}
+
+// Envoie un fichier (non PDF) vers le partage natif / l'enregistrement du système.
+async function partagerFichier(nom, mime, contenu, sujet, message){
+  // contenu : texte (JSON...) ou objet { base64, blob } (PDF déjà fabriqué)
+  const pret = (contenu && typeof contenu === 'object');
+  const b64 = pret ? contenu.base64 : texteEnBase64(contenu);
+  try{
+    if(window.Android && typeof window.Android.shareFile === 'function'){
+      window.Android.shareFile(b64, nom, mime, sujet||'', message||'');
+      return 'natif';
+    }
+    if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosSharePdf){
+      window.webkit.messageHandlers.iosSharePdf.postMessage({ base64:b64, fileName:nom, subject:sujet||'', text:message||'', email:'' });
+      return 'natif';
+    }
+    if(window.desktopApp && typeof window.desktopApp.sharePdf === 'function'){
+      const r = await window.desktopApp.sharePdf({ base64:b64, fileName:nom, subject:sujet||'', text:message||'', email:'', action:'save' });
+      return (r && (r.ok || r.saved)) ? 'bureau' : 'annule';
+    }
+    const blob = pret ? contenu.blob : new Blob([contenu], { type: mime });
+    const file = new File([blob], nom, { type: mime });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title:sujet||nom, text:message||'' });
+      return 'partage-web';
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nom;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    return 'telechargement';
+  }catch(e){
+    if(e && e.name === 'AbortError') return 'annule';
+    throw e;
+  }
+}
+
+function construireSauvegarde(){
+  const donnees = {};
+  CLES_SAUVEGARDE.forEach(k=>{ const v = localStorage.getItem(k); if(v !== null){ try{ donnees[k] = JSON.parse(v); }catch(e){} } });
+  return { app:'DevisPro', format:1, date:new Date().toISOString(), donnees };
+}
+
+async function sauvegarderDansFichier(){
+  const sauv = construireSauvegarde();
+  const nbDocs = (sauv.donnees[KEY_DEV]||[]).length;
+  const nom = 'DevisPro-sauvegarde-' + isoToday() + '.json';
+  try{
+    const res = await partagerFichier(nom, 'application/json', JSON.stringify(sauv), 'Sauvegarde Devis Pro', 'Sauvegarde de mes données Devis Pro (' + nbDocs + ' document(s)). Gardez ce fichier en lieu sûr.');
+    if(res !== 'annule'){
+      localStorage.setItem(KEY_DERNIERE_SAUVEGARDE, String(Date.now()));
+      showToast(res==='telechargement' ? 'Sauvegarde téléchargée' : 'Sauvegarde prête — gardez ce fichier en lieu sûr');
+    }
+  }catch(e){
+    showToast('Sauvegarde impossible : ' + (e && e.message ? e.message : 'erreur'));
+  }
+}
+
+function resumeSauvegarde(sauv){
+  const d = sauv.donnees || {};
+  return {
+    ents: (d[KEY_ENTS]||[]).length,
+    docs: (d[KEY_DEV]||[]).length,
+    arts: (d[KEY_ART]||[]).length,
+    date: sauv.date ? new Date(sauv.date).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''
+  };
+}
+
+// Valide strictement le contenu d'un fichier de sauvegarde avant toute utilisation
+function sauvegardeValide(sauv){
+  if(!sauv || typeof sauv !== 'object' || sauv.app !== 'DevisPro' || !sauv.donnees || typeof sauv.donnees !== 'object') return false;
+  const d = sauv.donnees;
+  for(const k of [KEY_ENTS, KEY_DEV, KEY_ART]){
+    if(d[k] === undefined) continue;
+    if(!Array.isArray(d[k])) return false;
+    if(!d[k].every(x => x && typeof x === 'object' && typeof x.id === 'string' && x.id.length < 120)) return false;
+  }
+  return true;
+}
+
+function fusionnerSauvegarde(sauv){
+  const d = sauv.donnees;
+  const fusion = (cle, liste)=>{
+    const ids = new Set(liste.map(x=>x.id));
+    (d[cle]||[]).forEach(x=>{ if(!ids.has(x.id)) liste.push(x); });
+  };
+  fusion(KEY_ENTS, entreprises); fusion(KEY_DEV, devisList); fusion(KEY_ART, articles);
+  // Compteurs de numérotation : on garde toujours le plus grand
+  const maxSeq = (a, b)=>{ const o = Object.assign({}, a); Object.keys(b||{}).forEach(t=>{ o[t] = Math.max(o[t]||1, b[t]||1); }); return o; };
+  if(d[KEY_SEQ_ENT] && typeof d[KEY_SEQ_ENT] === 'object'){
+    seqParEnt = seqParEnt || {};
+    Object.keys(d[KEY_SEQ_ENT]).forEach(eid=>{ seqParEnt[eid] = maxSeq(seqParEnt[eid], d[KEY_SEQ_ENT][eid]); });
+  }
+  if(d[KEY_SEQ] && typeof d[KEY_SEQ] === 'object') seq = maxSeq(seq, d[KEY_SEQ]);
+}
+
+function remplacerParSauvegarde(sauv){
+  const d = sauv.donnees;
+  entreprises.splice(0, entreprises.length, ...(d[KEY_ENTS]||[]));
+  devisList.splice(0, devisList.length, ...(d[KEY_DEV]||[]));
+  articles.splice(0, articles.length, ...(d[KEY_ART]||[]));
+  if(d[KEY_SEQ_ENT] && typeof d[KEY_SEQ_ENT] === 'object') seqParEnt = d[KEY_SEQ_ENT];
+  if(d[KEY_SEQ] && typeof d[KEY_SEQ] === 'object') seq = d[KEY_SEQ];
+  if(d[KEY_ACTIVE_ENT]) activeEntrepriseId = d[KEY_ACTIVE_ENT];
+}
+
+function appliquerSauvegarde(sauv, mode){
+  if(mode === 'remplacer') remplacerParSauvegarde(sauv); else fusionnerSauvegarde(sauv);
+  if(!entreprises.length) entreprises.push({ id:uid(), nom:'', adresse:'', cp:'', ville:'', tel:'', email:'', identifiantFiscal:'', rge:'', assurance:'', mentions:'', logo:'', tampon:'', signature:'', theme:'bleu' });
+  if(!entreprises.find(e=>e.id===activeEntrepriseId)) activeEntrepriseId = entreprises[0].id;
+  save(KEY_ENTS, entreprises); save(KEY_DEV, devisList); save(KEY_ART, articles);
+  save(KEY_SEQ, seq); save(KEY_SEQ_ENT, seqParEnt); save(KEY_ACTIVE_ENT, activeEntrepriseId);
+  try{ localStorage.removeItem(KEY_SESSION); }catch(e){}
+  location.reload();
+}
+
+function choisirFichierSauvegarde(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json,application/json'; inp.style.display = 'none';
+  document.body.appendChild(inp);
+  inp.addEventListener('change', ()=>{
+    const f = inp.files && inp.files[0];
+    inp.remove();
+    if(!f) return;
+    if(f.size > 60*1024*1024){ alert('Ce fichier est trop volumineux pour être une sauvegarde Devis Pro.'); return; }
+    const rd = new FileReader();
+    rd.onload = ()=>{
+      let sauv;
+      try{ sauv = JSON.parse(String(rd.result)); }catch(e){ sauv = null; }
+      if(!sauvegardeValide(sauv)){ alert("Ce fichier n'est pas une sauvegarde Devis Pro valide."); return; }
+      confirmerRestauration(sauv);
+    };
+    rd.onerror = ()=>alert('Lecture du fichier impossible.');
+    rd.readAsText(f);
+  });
+  inp.click();
+}
+
+function confirmerRestauration(sauv){
+  const r = resumeSauvegarde(sauv);
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay centre';
+  ov.id = 'restaurationOverlay';
+  ov.innerHTML = `
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header"><h2>Restaurer une sauvegarde</h2><button class="close-x">&times;</button></div>
+      <div class="envoi-info" style="word-break:normal;">Sauvegarde du <b>${escapeHtml(r.date)}</b><br>${r.ents} entreprise(s) · ${r.docs} devis/facture(s) · ${r.arts} article(s)</div>
+      <div style="display:grid;gap:8px;">
+        <button class="btn btn-primary" id="rFusion">Ajouter à mes données (recommandé)</button>
+        <button class="btn btn-danger" id="rRemplace">Remplacer toutes mes données</button>
+        <button class="btn btn-ghost" id="rAnnuler">Annuler</button>
+      </div>
+      <p class="helper" style="margin-top:12px;font-size:12px;">« Ajouter » garde vos données actuelles et ajoute seulement ce qui manque. Votre licence n'est jamais modifiée par une sauvegarde.</p>
+    </div>`;
+  document.body.appendChild(ov);
+  const fermer = ()=>ov.remove();
+  ov.querySelector('.close-x').addEventListener('click', fermer);
+  ov.querySelector('#rAnnuler').addEventListener('click', fermer);
+  ov.querySelector('#rFusion').addEventListener('click', ()=>appliquerSauvegarde(sauv, 'fusion'));
+  ov.querySelector('#rRemplace').addEventListener('click', ()=>{
+    if(confirm('Toutes les données actuelles de cet appareil seront remplacées par celles de la sauvegarde. Continuer ?')) appliquerSauvegarde(sauv, 'remplacer');
+  });
+}
+
+// HTML de la section « Sauvegarde de secours » (panneau compte)
+function htmlSectionSauvegarde(){
+  const ts = parseInt(localStorage.getItem(KEY_DERNIERE_SAUVEGARDE)||'0', 10);
+  const derniere = ts ? 'Dernière sauvegarde : ' + new Date(ts).toLocaleDateString('fr-FR') : 'Aucune sauvegarde par fichier pour le moment.';
+  return `
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">
+      <div style="font-weight:800;color:var(--navy);font-size:13.5px;margin-bottom:4px;">💾 Sauvegarde de secours (fichier)</div>
+      <div class="helper" style="font-size:12px;margin-bottom:8px;">${derniere} Fonctionne sans compte ni connexion : envoyez le fichier sur WhatsApp, e-mail ou Drive.</div>
+      <div style="display:grid;gap:8px;">
+        <button class="btn btn-ghost" id="bSauver">💾 Sauvegarder mes données</button>
+        <button class="btn btn-ghost" id="bRestaurer">📂 Restaurer depuis un fichier</button>
+      </div>
+    </div>`;
+}
+function brancherSectionSauvegarde(racine){
+  const s = racine.querySelector('#bSauver'), r = racine.querySelector('#bRestaurer');
+  if(s) s.addEventListener('click', sauvegarderDansFichier);
+  if(r) r.addEventListener('click', choisirFichierSauvegarde);
+}
+
+/* ---------- Rappel : créer un compte pour ne pas perdre ses données ---------- */
+const DELAI_RAPPEL_MS = 7 * 86400000;
+function rappelCompteNecessaire(){
+  if(window.__verrouille || compteActuel()) return false;
+  if(!devisList.length) return false;                     // rien à protéger pour l'instant
+  if(editingDevisId !== null) return false;                // jamais pendant la saisie
+  if(document.querySelector('.modal-overlay') || document.getElementById('apercuOverlay') || document.getElementById('lockScreen')) return false;
+  const dernier = parseInt(localStorage.getItem(KEY_RAPPEL_COMPTE)||'0', 10);
+  if(dernier && Date.now() - dernier < DELAI_RAPPEL_MS) return false;
+  const sauv = parseInt(localStorage.getItem(KEY_DERNIERE_SAUVEGARDE)||'0', 10);
+  if(sauv && Date.now() - sauv < DELAI_RAPPEL_MS) return false;  // déjà sauvegardé récemment
+  return true;
+}
+function afficherRappelCompte(){
+  localStorage.setItem(KEY_RAPPEL_COMPTE, String(Date.now()));
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay centre';
+  ov.innerHTML = `
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header"><h2>🛡️ Protégez vos devis</h2><button class="close-x">&times;</button></div>
+      <p style="font-size:13.5px;line-height:1.5;margin-bottom:14px;">Vos devis et factures sont uniquement enregistrés sur ce téléphone. Si l'application est désinstallée ou si le téléphone est perdu ou réinitialisé, <b>ils seront perdus</b>.</p>
+      <div style="display:grid;gap:8px;">
+        <button class="btn btn-primary" id="rpCompte">☁️ Créer un compte (sauvegarde en ligne)</button>
+        <button class="btn btn-ghost" id="rpFichier">💾 Sauvegarder dans un fichier</button>
+        <button class="btn btn-ghost" id="rpPlusTard">Plus tard</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  const fermer = ()=>ov.remove();
+  ov.querySelector('.close-x').addEventListener('click', fermer);
+  ov.querySelector('#rpPlusTard').addEventListener('click', fermer);
+  ov.querySelector('#rpCompte').addEventListener('click', ()=>{ fermer(); ouvrirCompte(); });
+  ov.querySelector('#rpFichier').addEventListener('click', ()=>{ fermer(); sauvegarderDansFichier(); });
+}
+setInterval(()=>{ try{ if(rappelCompteNecessaire()) afficherRappelCompte(); }catch(e){} }, 5000);
+
+/* ============================ RAPPORTS (mensuel / annuel, statuts, interactions) ============================ */
+const MOIS_NOMS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const MOIS_COURTS = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const STATUTS_ORDRE = ['brouillon','envoye','accepte','refuse'];
+const LIBELLES_ACTION = { cree:'Création', pdf:'PDF partagé / enregistré', email:'Envoi par e-mail', impression:'Impression', statut:'Changement de statut' };
+let rapportEtat = null;
+
+// Journal des interactions : chaque document garde la trace de ce qui lui est arrivé
+function noterInteraction(doc, action, valeur, persister){
+  try{
+    if(!doc) return;
+    if(!Array.isArray(doc.historique)) doc.historique = [];
+    const h = doc.historique, now = Date.now(), dernier = h[h.length-1];
+    // Plusieurs changements de statut en quelques instants = une seule hésitation, pas une interaction de plus
+    if(action === 'statut' && dernier && dernier.a === 'statut' && now - dernier.t < 120000) h.pop();
+    h.push({ t: now, a: action, v: valeur || '' });
+    if(h.length > 150) h.splice(0, h.length - 150);
+    if(persister !== false) save(KEY_DEV, devisList);
+  }catch(e){}
+}
+
+function isoLocal(t){
+  const x = new Date(t), p = n=>String(n).padStart(2,'0');
+  return x.getFullYear() + '-' + p(x.getMonth()+1) + '-' + p(x.getDate());
+}
+function totalDoc(d){ try{ return computeTotals(d).total || 0; }catch(e){ return 0; } }
+function datePaiement(d){
+  const h = Array.isArray(d.historique) ? d.historique : [];
+  for(let i=h.length-1;i>=0;i--){ if(h[i].a==='statut' && h[i].v==='accepte') return isoLocal(h[i].t); }
+  return d.dateCreation || '';
+}
+function initRapportEtat(){
+  const auj = todayISO();
+  if(!rapportEtat) rapportEtat = { ent: activeEntrepriseId, mode:'mois', annee: auj.slice(0,4), mois: auj.slice(5,7) };
+  if(rapportEtat.ent !== '*' && !entreprises.some(e=>e.id===rapportEtat.ent)) rapportEtat.ent = activeEntrepriseId;
+  if(rapportEtat.ent === '*' && entreprises.length < 2) rapportEtat.ent = activeEntrepriseId;
+}
+function titreRapport(etat){
+  return etat.mode === 'annee' ? ('Rapport annuel ' + etat.annee) : ('Rapport mensuel - ' + MOIS_NOMS[parseInt(etat.mois,10)-1] + ' ' + etat.annee);
+}
+
+function calculerRapport(etat, sansPrec){
+  const docs = devisList.filter(d => d && (etat.ent === '*' || d.entrepriseId === etat.ent));
+  const periode = etat.mode === 'annee' ? etat.annee : (etat.annee + '-' + etat.mois);
+  const inP = iso => !!iso && String(iso).startsWith(periode);
+  const vide = () => ({ n:0, montant:0, parStatut:{ brouillon:{n:0,m:0}, envoye:{n:0,m:0}, accepte:{n:0,m:0}, refuse:{n:0,m:0} } });
+  const R = { periode, etat, devis:vide(), factures:vide(), encaisse:{n:0,montant:0}, aEncaisser:{n:0,montant:0},
+              acceptation:null, series:[], clients:[], parEntreprise:[], interactions:{ total:0, parType:{}, evenements:[] } };
+
+  const clients = new Map();
+  docs.forEach(d=>{
+    const est = d.type === 'facture' ? R.factures : R.devis;
+    const total = totalDoc(d);
+    const st = STATUTS_ORDRE.includes(d.statut) ? d.statut : 'brouillon';
+    if(d.type === 'facture' && (st === 'envoye' || st === 'refuse')){ R.aEncaisser.n++; R.aEncaisser.montant += total; }
+    if(d.type === 'facture' && st === 'accepte' && inP(datePaiement(d))){ R.encaisse.n++; R.encaisse.montant += total; }
+    if(!inP(d.dateCreation)) return;
+    est.n++; est.montant += total; est.parStatut[st].n++; est.parStatut[st].m += total;
+    const nom = ((d.client && d.client.nom) || '').trim() || 'Client sans nom';
+    const cle = nom.toLowerCase();
+    if(!clients.has(cle)) clients.set(cle, { nom, dn:0, dm:0, fn:0, fm:0 });
+    const c = clients.get(cle);
+    if(d.type === 'facture'){ c.fn++; c.fm += total; } else { c.dn++; c.dm += total; }
+  });
+  const dv = R.devis.parStatut, decides = dv.accepte.n + dv.refuse.n;
+  R.acceptation = { taux: decides ? dv.accepte.n / decides : null, acceptes: dv.accepte.n, refuses: dv.refuse.n, attente: dv.envoye.n + dv.brouillon.n };
+  R.clients = Array.from(clients.values()).sort((a,b)=>(b.dm+b.fm)-(a.dm+a.fm));
+
+  // Évolution : 12 mois pour l'année, jours pour un mois
+  const annee = parseInt(etat.annee,10);
+  const nb = etat.mode === 'annee' ? 12 : new Date(annee, parseInt(etat.mois,10), 0).getDate();
+  for(let i=0;i<nb;i++) R.series.push({ label: etat.mode === 'annee' ? MOIS_COURTS[i] : String(i+1), devis:0, factures:0, nDevis:0, nFactures:0, encaisse:0 });
+  const idx = iso => etat.mode === 'annee' ? parseInt(String(iso).slice(5,7),10)-1 : parseInt(String(iso).slice(8,10),10)-1;
+  docs.forEach(d=>{
+    const total = totalDoc(d);
+    if(inP(d.dateCreation)){ const s = R.series[idx(d.dateCreation)]; if(s){ if(d.type==='facture'){ s.factures += total; s.nFactures++; } else { s.devis += total; s.nDevis++; } } }
+    if(d.type==='facture' && d.statut==='accepte'){ const p = datePaiement(d); if(inP(p)){ const s = R.series[idx(p)]; if(s) s.encaisse += total; } }
+  });
+
+  // Par entreprise (vue « toutes les entreprises »)
+  if(etat.ent === '*'){
+    entreprises.forEach(e=>{
+      const l = { nom: e.nom || '(sans nom)', dn:0, dm:0, fn:0, fm:0, enc:0 };
+      docs.filter(d=>d.entrepriseId === e.id).forEach(d=>{
+        const total = totalDoc(d);
+        if(inP(d.dateCreation)){ if(d.type==='facture'){ l.fn++; l.fm += total; } else { l.dn++; l.dm += total; } }
+        if(d.type==='facture' && d.statut==='accepte' && inP(datePaiement(d))) l.enc += total;
+      });
+      R.parEntreprise.push(l);
+    });
+  }
+
+  // Interactions
+  const evts = [];
+  docs.forEach(d=>{
+    const h = Array.isArray(d.historique) ? d.historique : [];
+    if(!h.some(x=>x.a==='cree') && d.dateCreation) evts.push({ t:new Date(d.dateCreation + 'T12:00:00').getTime(), a:'cree', v:'', d });
+    h.forEach(x=>evts.push({ t:x.t, a:x.a, v:x.v, d }));
+  });
+  const dansP = evts.filter(e=>inP(isoLocal(e.t))).sort((a,b)=>b.t-a.t);
+  dansP.forEach(e=>{ R.interactions.parType[e.a] = (R.interactions.parType[e.a]||0) + 1; });
+  R.interactions.total = dansP.length;
+  R.interactions.evenements = dansP;
+
+  // À relancer : devis envoyés sans réponse, factures à encaisser (toutes périodes)
+  const auj = todayISO();
+  const jours = (a, b)=>Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00')) / 86400000);
+  const dernierEnvoi = d=>{
+    const hh = Array.isArray(d.historique) ? d.historique : [];
+    for(let i=hh.length-1;i>=0;i--){ if(hh[i].a==='pdf' || hh[i].a==='email') return isoLocal(hh[i].t); }
+    return d.dateCreation;
+  };
+  R.relances = { devis:[], factures:[] };
+  docs.forEach(d=>{
+    const total = totalDoc(d), nomEnt = (entreprises.find(e=>e.id===d.entrepriseId)||{}).nom || '';
+    const base = { id:d.id, numero:d.numero||'', client:((d.client&&d.client.nom)||'').trim() || 'Client sans nom', montant:total, ent:nomEnt, entId:d.entrepriseId };
+    if(d.type !== 'facture' && d.statut === 'envoye'){
+      const depuis = Math.max(0, jours(dernierEnvoi(d), auj));
+      const fin = d.dateCreation ? new Date(new Date(d.dateCreation+'T00:00:00').getTime() + (d.validiteJours||30)*86400000).toISOString().slice(0,10) : '';
+      R.relances.devis.push(Object.assign(base, { depuis, expire: !!fin && fin < auj, fin }));
+    }
+    if(d.type === 'facture' && (d.statut === 'envoye' || d.statut === 'refuse')){
+      const ech = d.dateCreation ? new Date(new Date(d.dateCreation+'T00:00:00').getTime() + (d.validiteJours||30)*86400000).toISOString().slice(0,10) : auj;
+      R.relances.factures.push(Object.assign(base, { echeance:ech, retard: jours(ech, auj), impayee: d.statut === 'refuse' }));
+    }
+  });
+  R.relances.devis.sort((a,b)=>b.depuis - a.depuis);
+  R.relances.factures.sort((a,b)=>b.retard - a.retard);
+
+  // Période précédente (pour les comparaisons)
+  if(!sansPrec){
+    const ep = Object.assign({}, etat);
+    if(etat.mode === 'annee'){ ep.annee = String(parseInt(etat.annee,10) - 1); }
+    else {
+      let mo = parseInt(etat.mois,10) - 1, an = parseInt(etat.annee,10);
+      if(mo < 1){ mo = 12; an--; }
+      ep.mois = String(mo).padStart(2,'0'); ep.annee = String(an);
+    }
+    const P = calculerRapport(ep, true);
+    R.prec = { label: etat.mode === 'annee' ? ep.annee : (MOIS_NOMS[parseInt(ep.mois,10)-1] + ' ' + ep.annee),
+               devisN:P.devis.n, devisM:P.devis.montant, facN:P.factures.n, facM:P.factures.montant, enc:P.encaisse.montant, encN:P.encaisse.n };
+  }
+  return R;
+}
+
+// Évolution par rapport à la période précédente (texte + flèche : jamais la couleur seule)
+function variationTexte(cur, prev){
+  if(!prev) return cur ? '▲ nouveau' : '= 0';
+  const pct = Math.round((cur - prev) / prev * 100);
+  return pct > 0 ? '▲ +' + pct + ' %' : (pct < 0 ? '▼ ' + pct + ' %' : '= stable');
+}
+function ouvrirDocDepuisRapport(id){
+  const d = devisList.find(x=>x.id===id); if(!d) return;
+  if(d.entrepriseId && d.entrepriseId !== activeEntrepriseId) basculerEntreprise(d.entrepriseId);
+  currentTab = 'devis';
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab === 'devis'));
+  openDevisEditor(id);
+}
+
+function texteEvenement(e){
+  const d = e.d, num = d.numero || '', nature = d.type === 'facture' ? 'Facture' : 'Devis';
+  const client = (d.client && d.client.nom) ? (' - ' + d.client.nom) : '';
+  let quoi;
+  if(e.a === 'cree') quoi = nature + ' créé(e)';
+  else if(e.a === 'pdf') quoi = 'PDF partagé / enregistré';
+  else if(e.a === 'email') quoi = 'Préparé pour envoi par e-mail';
+  else if(e.a === 'impression') quoi = 'Imprimé(e)';
+  else if(e.a === 'statut') quoi = 'Statut : ' + statutLabel(e.v, d.type);
+  else quoi = e.a;
+  return { quoi, doc: num + client };
+}
+const ICONES_ACTION = { cree:'✨', pdf:'📤', email:'✉️', impression:'🖨️', statut:'🔄' };
+
+/* ---------- Affichage ---------- */
+function injecterStyleRapports(){
+  if(document.getElementById('rapportsStyle')) return;
+  const st = document.createElement('style'); st.id = 'rapportsStyle';
+  st.textContent = `
+    .rp-ctrl{display:grid;gap:8px;margin-bottom:12px;}
+    .rp-seg{display:flex;gap:6px;}
+    .rp-seg button{flex:1;padding:9px;border:1px solid var(--border);background:#fff;border-radius:9px;font-weight:700;font-size:13px;color:var(--navy);cursor:pointer;}
+    .rp-seg button.actif{background:var(--navy);color:#fff;border-color:var(--navy);}
+    .rp-per{display:flex;gap:6px;align-items:center;}
+    .rp-per select{flex:1;min-width:0;}
+    .rp-per button{padding:9px 12px;border:1px solid var(--border);background:#fff;border-radius:9px;cursor:pointer;font-size:15px;}
+    .rp-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+    .rp-kpi{background:#fff;border:1px solid var(--border);border-radius:11px;padding:11px;}
+    .rp-kpi .t{font-size:11px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.03em;}
+    .rp-kpi .v{font-size:17px;font-weight:800;color:var(--navy);margin-top:3px;word-break:break-word;}
+    .rp-kpi .s{font-size:11.5px;color:var(--muted);margin-top:2px;}
+    .rp-h{font-size:14px;font-weight:800;color:var(--navy);margin:16px 0 8px;}
+    .rp-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .rp-table th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);padding:6px 4px;border-bottom:1px solid var(--border);}
+    .rp-table td{padding:7px 4px;border-bottom:1px solid #EDEFF2;vertical-align:top;}
+    .rp-table td.n,.rp-table th.n{text-align:right;white-space:nowrap;}
+    .rp-scroll{overflow-x:auto;}
+    .rp-bar{height:7px;border-radius:4px;background:#E9EDF2;margin-top:4px;overflow:hidden;}
+    .rp-bar i{display:block;height:100%;background:var(--amber);}
+    .rp-chart{display:flex;align-items:flex-end;gap:2px;height:120px;padding:4px 0;border-bottom:1px solid var(--border);}
+    .rp-col{flex:1;min-width:0;display:flex;align-items:flex-end;justify-content:center;gap:1px;height:100%;}
+    .rp-col span{display:block;width:45%;max-width:14px;min-height:0;border-radius:3px 3px 0 0;}
+    .rp-col .d{background:var(--navy);} .rp-col .f{background:var(--amber);}
+    .rp-labels{display:flex;gap:2px;font-size:9.5px;color:var(--muted);}
+    .rp-labels span{flex:1;text-align:center;overflow:hidden;}
+    .rp-leg{font-size:12px;color:var(--muted);margin:6px 0;display:flex;gap:14px;}
+    .rp-leg b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+    .rp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+    .rp-chip{background:#F1F4F8;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;color:var(--navy);}
+    .rp-evt{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid #EDEFF2;font-size:12.5px;}
+    .rp-evt .i{font-size:16px;width:22px;text-align:center;}
+    .rp-evt .q{font-weight:700;color:var(--navy);}
+    .rp-evt .m{color:var(--muted);font-size:11.5px;}
+    .rp-var{font-weight:700;color:var(--navy) !important;}
+    .rp-sous{font-size:12.5px;font-weight:700;color:var(--navy);margin:10px 0 4px;}
+    .rp-clic{cursor:pointer;}
+    .rp-clic:active{background:#F1F4F8;}
+    .rp-note{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.45;}
+    .rp-vide{text-align:center;color:var(--muted);font-size:13px;padding:22px 8px;}
+    .rp-actions{display:grid;gap:8px;margin:14px 0 4px;}
+  `;
+  document.head.appendChild(st);
+}
+
+function renderRapports(){
+  injecterStyleRapports(); initRapportEtat();
+  const m = document.getElementById('main');
+  const et = rapportEtat;
+  let R;
+  try{ R = calculerRapport(et); }catch(e){ m.innerHTML = '<div class="card"><div class="rp-vide">Impossible de calculer le rapport.</div></div>'; return; }
+  const anneeCourante = new Date().getFullYear();
+  const annees = new Set([anneeCourante, parseInt(et.annee,10)]);
+  devisList.forEach(d=>{ const a = parseInt(String(d.dateCreation||'').slice(0,4),10); if(a>2000 && a<=anneeCourante+1) annees.add(a); });
+  const listeAnnees = Array.from(annees).sort((a,b)=>b-a);
+  const optEnt = (entreprises.length > 1 ? `<option value="*" ${et.ent==='*'?'selected':''}>Toutes les entreprises</option>` : '') +
+    entreprises.map(e=>`<option value="${escapeHtml(e.id)}" ${e.id===et.ent?'selected':''}>${escapeHtml(e.nom)||'(sans nom)'}</option>`).join('');
+  const maxSerie = Math.max(1, ...R.series.map(s=>Math.max(s.devis, s.factures)));
+  const aDesDonnees = R.devis.n + R.factures.n + R.encaisse.n + R.interactions.total > 0;
+  const tauxTxt = R.acceptation.taux === null ? '-' : Math.round(R.acceptation.taux*100) + ' %';
+  const ligneStatut = (lbl, o, tot, type)=>`<tr><td>${lbl}<div class="rp-bar"><i style="width:${tot ? Math.round(o.n/tot*100) : 0}%"></i></div></td><td class="n">${o.n}</td><td class="n">${fcfa(o.m)}</td></tr>`;
+  const tabStatuts = (titre, bloc, type)=>`
+    <div class="rp-h">${titre}</div>
+    <table class="rp-table"><tr><th>Statut</th><th class="n">Nb</th><th class="n">Montant</th></tr>
+    ${STATUTS_ORDRE.map(s=>ligneStatut(statutLabel(s, type), bloc.parStatut[s], bloc.n, type)).join('')}</table>`;
+  const chips = ['cree','pdf','email','impression','statut'].filter(k=>R.interactions.parType[k]).map(k=>`<span class="rp-chip">${ICONES_ACTION[k]} ${R.interactions.parType[k]} · ${LIBELLES_ACTION[k]}</span>`).join('');
+  const evts = R.interactions.evenements.slice(0, 40).map(e=>{
+    const x = texteEvenement(e), dt = new Date(e.t);
+    return `<div class="rp-evt"><div class="i">${ICONES_ACTION[e.a]||'•'}</div><div><div class="q">${escapeHtml(x.quoi)}</div><div class="m">${escapeHtml(x.doc)} · ${dt.toLocaleDateString('fr-FR')} ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div></div></div>`;
+  }).join('');
+
+  const ligneRel = (x, texteSit, etoile)=>`<tr class="rp-clic" data-doc="${escapeHtml(x.id)}"><td><b>${escapeHtml(x.numero)}</b><br>${escapeHtml(x.client)}${et.ent==='*' && x.ent ? '<br><small>'+escapeHtml(x.ent)+'</small>' : ''}</td><td class="n">${fcfa(x.montant)}</td><td class="n">${texteSit}</td></tr>`;
+  const sommeRel = l=>l.reduce((s,x)=>s+x.montant,0);
+  const blocRelances = `
+    <div class="rp-h">À relancer</div>
+    <div class="rp-sous">Devis envoyés sans réponse (${R.relances.devis.length} · ${fcfa(sommeRel(R.relances.devis))})</div>
+    ${R.relances.devis.length ? `<div class="rp-scroll"><table class="rp-table"><tr><th>Devis</th><th class="n">Montant</th><th class="n">Situation</th></tr>
+      ${R.relances.devis.slice(0,10).map(x=>ligneRel(x, 'envoyé depuis ' + x.depuis + ' j' + (x.expire ? '<br><b style="color:var(--danger)">⚠ validité dépassée</b>' : ''))).join('')}</table></div>
+      ${R.relances.devis.length>10 ? `<div class="rp-note">+ ${R.relances.devis.length-10} autre(s)</div>` : ''}` : '<div class="rp-vide">Aucun devis en attente de réponse.</div>'}
+    <div class="rp-sous">Factures à encaisser (${R.relances.factures.length} · ${fcfa(sommeRel(R.relances.factures))})</div>
+    ${R.relances.factures.length ? `<div class="rp-scroll"><table class="rp-table"><tr><th>Facture</th><th class="n">Montant</th><th class="n">Échéance</th></tr>
+      ${R.relances.factures.slice(0,10).map(x=>ligneRel(x, (x.retard > 0 ? '<b style="color:var(--danger)">⚠ en retard de ' + x.retard + ' j</b>' : (x.retard === 0 ? "échéance aujourd'hui" : 'dans ' + (-x.retard) + ' j')) + (x.impayee ? '<br><small>marquée impayée</small>' : ''))).join('')}</table></div>
+      ${R.relances.factures.length>10 ? `<div class="rp-note">+ ${R.relances.factures.length-10} autre(s)</div>` : ''}` : '<div class="rp-vide">Aucune facture en attente de paiement.</div>'}
+    <div class="rp-note">Touchez une ligne pour ouvrir le document.</div>`;
+
+  m.innerHTML = `
+    <div class="card">
+      <div class="rp-ctrl">
+        <select id="rpEnt" aria-label="Entreprise">${optEnt}</select>
+        <div class="rp-seg"><button data-mode="mois" class="${et.mode==='mois'?'actif':''}">Mensuel</button><button data-mode="annee" class="${et.mode==='annee'?'actif':''}">Annuel</button></div>
+        <div class="rp-per">
+          <button id="rpPrec" aria-label="Période précédente">◀</button>
+          ${et.mode==='mois' ? `<select id="rpMois" aria-label="Mois">${MOIS_NOMS.map((n,i)=>`<option value="${String(i+1).padStart(2,'0')}" ${String(i+1).padStart(2,'0')===et.mois?'selected':''}>${n}</option>`).join('')}</select>` : ''}
+          <select id="rpAnnee" aria-label="Année">${listeAnnees.map(a=>`<option value="${a}" ${String(a)===et.annee?'selected':''}>${a}</option>`).join('')}</select>
+          <button id="rpSuiv" aria-label="Période suivante">▶</button>
+        </div>
+      </div>
+      <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:10px;">${escapeHtml(titreRapport(et))}</div>
+
+      <div class="rp-kpis">
+        <div class="rp-kpi"><div class="t">Devis émis</div><div class="v">${R.devis.n}</div><div class="s">${fcfa(R.devis.montant)}</div><div class="s rp-var">${variationTexte(R.devis.montant, R.prec.devisM)} vs ${escapeHtml(R.prec.label)}</div></div>
+        <div class="rp-kpi"><div class="t">Factures émises</div><div class="v">${R.factures.n}</div><div class="s">${fcfa(R.factures.montant)}</div><div class="s rp-var">${variationTexte(R.factures.montant, R.prec.facM)} vs ${escapeHtml(R.prec.label)}</div></div>
+        <div class="rp-kpi"><div class="t">Encaissé</div><div class="v">${fcfa(R.encaisse.montant)}</div><div class="s">${R.encaisse.n} facture(s) payée(s)</div><div class="s rp-var">${variationTexte(R.encaisse.montant, R.prec.enc)} vs ${escapeHtml(R.prec.label)}</div></div>
+        <div class="rp-kpi"><div class="t">Reste à encaisser</div><div class="v">${fcfa(R.aEncaisser.montant)}</div><div class="s">${R.aEncaisser.n} facture(s) · toutes périodes</div></div>
+        <div class="rp-kpi" style="grid-column:1 / -1;"><div class="t">Taux d'acceptation des devis</div><div class="v">${tauxTxt}</div><div class="s">${R.acceptation.acceptes} accepté(s) · ${R.acceptation.refuses} refusé(s) · ${R.acceptation.attente} en attente</div></div>
+      </div>
+
+      ${aDesDonnees ? '' : '<div class="rp-vide">Aucune activité sur cette période.</div>'}
+
+      ${blocRelances}
+
+      ${et.ent === '*' ? `
+        <div class="rp-h">Par entreprise</div>
+        <div class="rp-scroll"><table class="rp-table"><tr><th>Entreprise</th><th class="n">Devis</th><th class="n">Factures</th><th class="n">Encaissé</th></tr>
+        ${R.parEntreprise.map(l=>`<tr><td>${escapeHtml(l.nom)}</td><td class="n">${l.dn}<br><small>${fcfa(l.dm)}</small></td><td class="n">${l.fn}<br><small>${fcfa(l.fm)}</small></td><td class="n">${fcfa(l.enc)}</td></tr>`).join('')}</table></div>` : ''}
+
+      ${tabStatuts('Statut des devis', R.devis, 'devis')}
+      ${tabStatuts('Statut des factures', R.factures, 'facture')}
+
+      <div class="rp-h">${et.mode==='annee' ? 'Évolution mois par mois' : 'Évolution jour par jour'}</div>
+      <div class="rp-leg"><span><b style="background:var(--navy)"></b>Devis</span><span><b style="background:var(--amber)"></b>Factures</span></div>
+      <div class="rp-chart" role="img" aria-label="Montants des devis et des factures par ${et.mode==='annee'?'mois':'jour'}">
+        ${R.series.map(s=>`<div class="rp-col" title="${escapeHtml(s.label)} : devis ${fcfa(s.devis)} · factures ${fcfa(s.factures)}"><span class="d" style="height:${Math.round(s.devis/maxSerie*100)}%"></span><span class="f" style="height:${Math.round(s.factures/maxSerie*100)}%"></span></div>`).join('')}
+      </div>
+      <div class="rp-labels">${R.series.map((s,i)=>`<span>${(et.mode==='annee' || i%5===0 || i===R.series.length-1) ? s.label : ''}</span>`).join('')}</div>
+      ${et.mode==='annee' ? `
+        <div class="rp-scroll" style="margin-top:8px;"><table class="rp-table"><tr><th>Mois</th><th class="n">Devis</th><th class="n">Factures</th><th class="n">Encaissé</th></tr>
+        ${R.series.map(s=>`<tr><td>${s.label}</td><td class="n">${s.nDevis} · ${fcfa(s.devis)}</td><td class="n">${s.nFactures} · ${fcfa(s.factures)}</td><td class="n">${fcfa(s.encaisse)}</td></tr>`).join('')}</table></div>` : ''}
+
+      <div class="rp-h">Clients de la période</div>
+      ${R.clients.length ? `<div class="rp-scroll"><table class="rp-table"><tr><th>Client</th><th class="n">Devis</th><th class="n">Factures</th></tr>
+        ${R.clients.slice(0,10).map(c=>`<tr><td>${escapeHtml(c.nom)}</td><td class="n">${c.dn} · ${fcfa(c.dm)}</td><td class="n">${c.fn} · ${fcfa(c.fm)}</td></tr>`).join('')}</table></div>
+        ${R.clients.length>10 ? `<div class="rp-note">+ ${R.clients.length-10} autre(s) client(s)</div>` : ''}` : '<div class="rp-vide">Aucun client sur cette période.</div>'}
+
+      <div class="rp-h">Interactions (${R.interactions.total})</div>
+      ${chips ? `<div class="rp-chips">${chips}</div>` : ''}
+      ${evts || '<div class="rp-vide">Aucune interaction sur cette période.</div>'}
+      ${R.interactions.evenements.length > 40 ? `<div class="rp-note">Les 40 plus récentes sur ${R.interactions.evenements.length}.</div>` : ''}
+      <div class="rp-note">Le journal des interactions est enregistré à partir de cette version : pour les documents plus anciens, seule la création est connue.</div>
+
+      <div class="rp-actions">
+        <button class="btn btn-primary" id="rpPdf">📄 Exporter ce rapport en PDF</button>
+      </div>
+    </div>`;
+
+  m.querySelectorAll('[data-doc]').forEach(tr=>tr.addEventListener('click', ()=>ouvrirDocDepuisRapport(tr.dataset.doc)));
+  const maj = ()=>renderRapports();
+  m.querySelector('#rpEnt').addEventListener('change', e=>{ rapportEtat.ent = e.target.value; maj(); });
+  m.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{ rapportEtat.mode = b.dataset.mode; maj(); }));
+  const sm = m.querySelector('#rpMois'); if(sm) sm.addEventListener('change', e=>{ rapportEtat.mois = e.target.value; maj(); });
+  m.querySelector('#rpAnnee').addEventListener('change', e=>{ rapportEtat.annee = e.target.value; maj(); });
+  const deplacer = (sens)=>{
+    if(rapportEtat.mode === 'annee'){ rapportEtat.annee = String(parseInt(rapportEtat.annee,10) + sens); }
+    else {
+      let mo = parseInt(rapportEtat.mois,10) + sens, an = parseInt(rapportEtat.annee,10);
+      if(mo < 1){ mo = 12; an--; } else if(mo > 12){ mo = 1; an++; }
+      rapportEtat.mois = String(mo).padStart(2,'0'); rapportEtat.annee = String(an);
+    }
+    maj();
+  };
+  m.querySelector('#rpPrec').addEventListener('click', ()=>deplacer(-1));
+  m.querySelector('#rpSuiv').addEventListener('click', ()=>deplacer(1));
+  m.querySelector('#rpPdf').addEventListener('click', async (ev)=>{
+    const btn = ev.currentTarget; btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Création du PDF…';
+    try{
+      const pdf = await genererPdfRapport(calculerRapport(rapportEtat));
+      const res = await partagerFichier(pdf.fileName, 'application/pdf', pdf, 'Devis Pro - ' + titreRapport(rapportEtat), titreRapport(rapportEtat));
+      if(res === 'telechargement') showToast('PDF téléchargé');
+    }catch(e){ showToast('Export impossible : ' + (e && e.message ? e.message : 'erreur')); }
+    finally{ btn.disabled = false; btn.textContent = txt; }
+  });
+}
+
+/* ---------- Export PDF du rapport ---------- */
+async function genererPdfRapport(R){
+  if(!(window.jspdf && window.jspdf.jsPDF)) throw new Error('Module PDF indisponible');
+  if(window.__verrouille || etatLicence()==='expire') throw new Error('Licence inactive');
+  const { jsPDF } = window.jspdf, et = R.etat;
+  const ent = et.ent === '*' ? null : (entreprises.find(e=>e.id===et.ent) || entreprise);
+  const col = couleursEntreprise(ent || entreprise);
+  const PRI = rgbArr(principaleLisible(col.primary)), ACC = rgbArr(col.accent);
+  const MUTED = [91,107,124], TEXT = [22,33,46];
+  const doc = new jsPDF({ unit:'mm', format:'a4', compress:true });
+  doc.addFileToVFS('DVS.ttf', PDF_FONT_REG);  doc.addFont('DVS.ttf',  'DVS', 'normal');
+  doc.addFileToVFS('DVSB.ttf', PDF_FONT_BOLD); doc.addFont('DVSB.ttf', 'DVS', 'bold');
+  const W = 210, H = 297, MX = 12, BOT = H - 16;
+  const setF = (size, style, color)=>{ doc.setFont('DVS', style||'normal'); doc.setFontSize(size); doc.setTextColor(...(color||TEXT)); };
+  const F = n => pdfTxt(fcfa(n));
+  let y = 14;
+  setF(10, 'bold', PRI); doc.text(pdfTxt(ent ? (ent.nom || 'Votre entreprise') : 'Toutes les entreprises'), MX, y);
+  setF(8, 'normal', MUTED); doc.text('Édité le ' + frDate(todayISO()), W-MX, y, { align:'right' });
+  y += 8; setF(18, 'bold', PRI); doc.text(pdfTxt(titreRapport(et)), MX, y);
+  y += 3; doc.setDrawColor(...ACC); doc.setLineWidth(0.9); doc.line(MX, y, W-MX, y); y += 6;
+
+  const tableau = (titre, head, body, opts)=>{
+    if(y > BOT - 30){ doc.addPage(); y = 14; }
+    setF(10.5, 'bold', PRI); doc.text(pdfTxt(titre), MX, y); y += 2;
+    doc.autoTable(Object.assign({
+      startY: y, head: [head], body: body.map(r=>r.map(pdfTxt)), theme:'plain', margin:{ left:MX, right:MX, bottom:16 },
+      styles:{ font:'DVS', fontSize:8.5, cellPadding:1.9, textColor:TEXT, lineColor:[237,239,242], lineWidth:{ bottom:0.2 }, overflow:'linebreak' },
+      headStyles:{ fillColor:PRI, textColor:[255,255,255], fontStyle:'bold', fontSize:7.5, lineWidth:0 },
+      alternateRowStyles:{ fillColor:[250,251,252] }, rowPageBreak:'avoid'
+    }, opts || {}));
+    y = doc.lastAutoTable.finalY + 7;
+  };
+  const tauxTxt = R.acceptation.taux === null ? '-' : Math.round(R.acceptation.taux*100) + ' %';
+  const P = R.prec;
+  tableau('Synthèse', ['Indicateur', 'Période', 'Précédente (' + P.label + ')', 'Évolution'], [
+    ['Devis émis', R.devis.n + ' - ' + F(R.devis.montant), P.devisN + ' - ' + F(P.devisM), variationTexte(R.devis.montant, P.devisM).replace('▲ ','').replace('▼ ','')],
+    ['Factures émises', R.factures.n + ' - ' + F(R.factures.montant), P.facN + ' - ' + F(P.facM), variationTexte(R.factures.montant, P.facM).replace('▲ ','').replace('▼ ','')],
+    ['Encaissé', F(R.encaisse.montant) + ' (' + R.encaisse.n + ' facture(s))', F(P.enc), variationTexte(R.encaisse.montant, P.enc).replace('▲ ','').replace('▼ ','')],
+    ['Reste à encaisser (toutes périodes)', F(R.aEncaisser.montant) + ' (' + R.aEncaisser.n + ' facture(s))', '-', '-'],
+    ["Taux d'acceptation des devis", tauxTxt + ' (' + R.acceptation.acceptes + ' accepté(s), ' + R.acceptation.refuses + ' refusé(s), ' + R.acceptation.attente + ' en attente)', '-', '-']
+  ], { columnStyles:{ 1:{ halign:'right' }, 2:{ halign:'right' }, 3:{ halign:'right' } } });
+  if(et.ent === '*'){
+    tableau('Par entreprise', ['Entreprise','Devis','Factures','Encaissé'],
+      R.parEntreprise.map(l=>[l.nom, l.dn + ' - ' + F(l.dm), l.fn + ' - ' + F(l.fm), F(l.enc)]), { columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'} } });
+  }
+  if(R.relances.devis.length){
+    tableau('À relancer - devis envoyés sans réponse (' + R.relances.devis.length + ')', ['Devis','Client','Montant','Situation'],
+      R.relances.devis.slice(0,20).map(x=>[x.numero, x.client + (et.ent==='*' && x.ent ? ' (' + x.ent + ')' : ''), F(x.montant), 'envoyé depuis ' + x.depuis + ' j' + (x.expire ? ' - validité dépassée' : '')]), { columnStyles:{ 2:{halign:'right'} } });
+  }
+  if(R.relances.factures.length){
+    tableau('À relancer - factures à encaisser (' + R.relances.factures.length + ')', ['Facture','Client','Montant','Échéance'],
+      R.relances.factures.slice(0,20).map(x=>[x.numero, x.client + (et.ent==='*' && x.ent ? ' (' + x.ent + ')' : ''), F(x.montant), frDate(x.echeance) + (x.retard > 0 ? ' - retard ' + x.retard + ' j' : '')]), { columnStyles:{ 2:{halign:'right'} } });
+  }
+  const lignesStatut = (bloc, type)=>STATUTS_ORDRE.map(s=>[statutLabel(s, type), String(bloc.parStatut[s].n), F(bloc.parStatut[s].m)]);
+  tableau('Statut des devis', ['Statut','Nombre','Montant'], lignesStatut(R.devis,'devis'), { columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'} } });
+  tableau('Statut des factures', ['Statut','Nombre','Montant'], lignesStatut(R.factures,'facture'), { columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'} } });
+  if(et.mode === 'annee'){
+    tableau('Évolution mois par mois', ['Mois','Devis','Factures','Encaissé'],
+      R.series.map(s=>[s.label, s.nDevis + ' - ' + F(s.devis), s.nFactures + ' - ' + F(s.factures), F(s.encaisse)]), { columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'} } });
+  }
+  if(R.clients.length){
+    tableau('Clients de la période', ['Client','Devis','Factures'],
+      R.clients.slice(0,15).map(c=>[c.nom, c.dn + ' - ' + F(c.dm), c.fn + ' - ' + F(c.fm)]), { columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'} } });
+  }
+  const resume = ['cree','pdf','email','impression','statut'].filter(k=>R.interactions.parType[k]).map(k=>LIBELLES_ACTION[k] + ' : ' + R.interactions.parType[k]).join('  |  ');
+  tableau('Interactions (' + R.interactions.total + ')', ['Date','Événement','Document'],
+    R.interactions.evenements.slice(0,25).map(e=>{ const x = texteEvenement(e), dt = new Date(e.t);
+      return [dt.toLocaleDateString('fr-FR') + ' ' + dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}), x.quoi, x.doc]; }),
+    { columnStyles:{ 0:{ cellWidth:34 } } });
+  if(resume){ setF(8.5, 'normal', MUTED); doc.splitTextToSize(pdfTxt(resume), W-2*MX).forEach(l=>{ if(y > BOT){ doc.addPage(); y = 14; } doc.text(l, MX, y); y += 4.2; }); }
+
+  const n = doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){
+    doc.setPage(i); setF(7.5, 'normal', MUTED);
+    doc.text(pdfTxt((ent ? (ent.nom||'') : 'Toutes les entreprises') + ' - ' + titreRapport(et)), MX, H-8);
+    doc.text('Page ' + i + ' / ' + n, W-MX, H-8, { align:'right' });
+  }
+  const ab = doc.output('arraybuffer');
+  const slug = (ent ? (ent.nom||'entreprise') : 'toutes').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30) || 'rapport';
+  const periode = et.mode === 'annee' ? et.annee : (et.annee + '-' + et.mois);
+  const fileName = 'Rapport-' + periode + '-' + slug + '.pdf';
+  return { blob:new Blob([ab], { type:'application/pdf' }), base64:arrayBufferToBase64(ab), fileName };
+}
 
 /* ============================ INITIALISATION ============================ */
 (function initApp(){

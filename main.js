@@ -43,11 +43,12 @@ ipcMain.handle('share-pdf', async (event, p) => {
     const buf = Buffer.from(p.base64, 'base64');
     if (!buf.length || buf.length > 30 * 1024 * 1024) return { ok: false, error: 'size' };
     let name = path.basename(String(p.fileName || 'Document.pdf')).replace(/[^A-Za-z0-9._-]/g, '_');
-    if (!/\.pdf$/i.test(name)) name += '.pdf';
+    if (!/\.(pdf|json)$/i.test(name)) name += '.pdf';
+    const estJson = /\.json$/i.test(name);
     const r = await dialog.showSaveDialog(win, {
-      title: 'Enregistrer le PDF',
+      title: estJson ? 'Enregistrer la sauvegarde' : 'Enregistrer le PDF',
       defaultPath: path.join(app.getPath('downloads'), name),
-      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+      filters: estJson ? [{ name: 'Sauvegarde Devis Pro', extensions: ['json'] }] : [{ name: 'PDF', extensions: ['pdf'] }]
     });
     if (r.canceled || !r.filePath) return { ok: false, canceled: true };
     fs.writeFileSync(r.filePath, buf);
