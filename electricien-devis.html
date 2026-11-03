@@ -3692,14 +3692,16 @@ function calculerRapport(etat, sansPrec){
     const est = d.type === 'facture' ? R.factures : R.devis;
     const total = totalDoc(d);
     const st = STATUTS_ORDRE.includes(d.statut) ? d.statut : 'brouillon';
-    if(d.type === 'facture' && (st === 'envoye' || st === 'refuse')){ R.aEncaisser.n++; R.aEncaisser.montant += total; }
+    if(d.type === 'facture' && (st === 'envoye' || st === 'refuse') && inP(d.dateCreation)){ R.aEncaisser.n++; R.aEncaisser.montant += total; }
     if(d.type === 'facture' && st === 'accepte' && inP(datePaiement(d))){ R.encaisse.n++; R.encaisse.montant += total; }
     if(!inP(d.dateCreation)) return;
     est.n++; est.montant += total; est.parStatut[st].n++; est.parStatut[st].m += total;
     const nom = ((d.client && d.client.nom) || '').trim() || 'Client sans nom';
     const cle = nom.toLowerCase();
-    if(!clients.has(cle)) clients.set(cle, { nom, dn:0, dm:0, fn:0, fm:0 });
+    if(!clients.has(cle)) clients.set(cle, { nom, tel:'', dn:0, dm:0, fn:0, fm:0, acc:0, pay:0, dernier:0 });
     const c = clients.get(cle);
+    if(!c.tel && d.client && d.client.tel) c.tel = String(d.client.tel).trim();
+    if(d.type === 'facture'){ if(st === 'accepte') c.pay++; } else if(st === 'accepte') c.acc++;
     if(d.type === 'facture'){ c.fn++; c.fm += total; } else { c.dn++; c.dm += total; }
   });
   const dv = R.devis.parStatut, decides = dv.accepte.n + dv.refuse.n;
@@ -3720,10 +3722,10 @@ function calculerRapport(etat, sansPrec){
   // Par entreprise (vue « toutes les entreprises »)
   if(etat.ent === '*'){
     entreprises.forEach(e=>{
-      const l = { nom: e.nom || '(sans nom)', dn:0, dm:0, fn:0, fm:0, enc:0 };
+      const l = { nom: e.nom || '(sans nom)', dn:0, dm:0, fn:0, fm:0, enc:0, acc:0, ref:0 };
       docs.filter(d=>d.entrepriseId === e.id).forEach(d=>{
         const total = totalDoc(d);
-        if(inP(d.dateCreation)){ if(d.type==='facture'){ l.fn++; l.fm += total; } else { l.dn++; l.dm += total; } }
+        if(inP(d.dateCreation)){ if(d.type==='facture'){ l.fn++; l.fm += total; } else { l.dn++; l.dm += total; if(d.statut==='accepte') l.acc++; if(d.statut==='refuse') l.ref++; } }
         if(d.type==='facture' && d.statut==='accepte' && inP(datePaiement(d))) l.enc += total;
       });
       R.parEntreprise.push(l);
@@ -3741,6 +3743,18 @@ function calculerRapport(etat, sansPrec){
   dansP.forEach(e=>{ R.interactions.parType[e.a] = (R.interactions.parType[e.a]||0) + 1; });
   R.interactions.total = dansP.length;
   R.interactions.evenements = dansP;
+  dansP.forEach(e=>{
+    const k = (((e.d.client && e.d.client.nom) || '').trim() || 'Client sans nom').toLowerCase();
+    const c = clients.get(k); if(c && e.t > c.dernier) c.dernier = e.t;
+  });
+  // 12 mois de l'année choisie (graphique toujours annuel ; le mois choisi est mis en évidence)
+  R.annee12 = [];
+  for(let i=0;i<12;i++) R.annee12.push({ label:MOIS_COURTS[i], devis:0, factures:0, n:0 });
+  docs.forEach(d=>{
+    if(String(d.dateCreation||'').slice(0,4) !== String(etat.annee)) return;
+    const k = parseInt(String(d.dateCreation).slice(5,7),10)-1, s12 = R.annee12[k]; if(!s12) return;
+    const t = totalDoc(d); if(d.type==='facture') s12.factures += t; else s12.devis += t; s12.n++;
+  });
 
   // À relancer : devis envoyés sans réponse, factures à encaisser (toutes périodes)
   const auj = todayISO();
@@ -3861,8 +3875,139 @@ function injecterStyleRapports(){
   document.head.appendChild(st);
 }
 
+function injecterStyleRapports2(){
+  if(document.getElementById('rapportsStyle2')) return;
+  const st = document.createElement('style'); st.id = 'rapportsStyle2';
+  st.textContent = `
+    .rpx-sec{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;}
+    .rpx-sec h3{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);margin:0 0 10px;}
+    .rpx-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;}
+    .rpx-kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;border-top:3px solid var(--navy);}
+    .rpx-kpi.vert{border-top-color:#2E9E6B;} .rpx-kpi.amb{border-top-color:var(--amber);} .rpx-kpi.acc{border-top-color:var(--amber);}
+    .rpx-kpi .t{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
+    .rpx-kpi .v{font-size:20px;font-weight:800;color:var(--navy);margin-top:4px;word-break:break-word;}
+    .rpx-kpi.vert .v{color:#1F7F52;}
+    .rpx-kpi .s{font-size:11.5px;color:var(--muted);margin-top:2px;}
+    .rpx-kpi .vr{font-size:11.5px;font-weight:700;color:var(--navy);margin-top:3px;}
+    .rpx-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;}
+    .rpx-cols .rpx-sec{margin-bottom:0;} .rpx-cols{margin-bottom:12px;}
+    .rpx-chart{display:flex;align-items:flex-end;gap:3px;height:150px;border-bottom:1px solid var(--border);padding-top:6px;}
+    .rpx-col{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:0 1px;border-radius:4px 4px 0 0;}
+    .rpx-col.sel{background:rgba(245,185,61,.18);}
+    .rpx-col span{display:block;flex:1;max-width:16px;border-radius:3px 3px 0 0;min-height:0;}
+    .rpx-col .d{background:var(--navy);} .rpx-col .f{background:var(--amber);}
+    .rpx-lab{display:flex;gap:3px;font-size:10px;color:var(--muted);margin-top:4px;}
+    .rpx-lab span{flex:1;text-align:center;overflow:hidden;white-space:nowrap;} .rpx-lab span.sel{font-weight:800;color:var(--navy);}
+    .rpx-pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;}
+    .rpx-pill.brouillon{background:#EEF1F5;color:#4C5B6B;} .rpx-pill.envoye{background:#E3EEFB;color:#1E5AA8;}
+    .rpx-pill.accepte{background:#DDF3E8;color:#1F7F52;} .rpx-pill.refuse{background:#FBE4DE;color:#B03A22;}
+    .rpx-tot td{font-weight:800;border-top:2px solid var(--border);border-bottom:0;}
+    .rpx-tab{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .rpx-tab th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 5px;border-bottom:1px solid var(--border);white-space:nowrap;}
+    .rpx-tab td{padding:7px 5px;border-bottom:1px solid #EDEFF2;vertical-align:top;}
+    .rpx-tab .n{text-align:right;white-space:nowrap;} .rpx-tab small{color:var(--muted);display:block;}
+    .rpx-act{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #EDEFF2;font-size:12.5px;align-items:baseline;}
+    .rpx-act .dt{flex:0 0 78px;color:var(--muted);font-size:11.5px;} .rpx-act .tx b{color:var(--navy);}
+    .rpx-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:5px;background:#EEF1F5;color:#4C5B6B;font-size:10px;font-weight:800;text-transform:uppercase;}
+    .rpx-btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:10px;}
+    .rpx-head{display:none;}
+    #printArea.rpx-doc .rpx-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--amber);padding-bottom:8px;margin-bottom:12px;}
+    #printArea.rpx-doc .rpx-head .a{font-size:15px;font-weight:800;color:var(--navy);}
+    #printArea.rpx-doc .rpx-head .b{text-align:right;font-size:11px;color:var(--muted);} #printArea.rpx-doc .rpx-head .b b{display:block;font-size:17px;color:var(--navy);}
+    #printArea.rpx-doc .rpx-sec,#printArea.rpx-doc .rpx-kpi{break-inside:avoid;page-break-inside:avoid;}
+    #printArea.rpx-doc tr{break-inside:avoid;page-break-inside:avoid;}
+    #printArea.rpx-doc *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    #printArea.rpx-doc .rpx-kpis{grid-template-columns:repeat(3,1fr);}
+    #printArea.rpx-doc .rpx-cols{grid-template-columns:1fr 1fr;}
+    @media (max-width:640px){ .rpx-kpis{grid-template-columns:1fr 1fr;} .rpx-scr{overflow-x:auto;} .rpx-scr table{min-width:520px;} }
+  `;
+  document.head.appendChild(st);
+}
+
+function htmlRapport(R, imp){
+  const et = R.etat, tout = et.ent === '*';
+  const tauxTxt = R.acceptation.taux === null ? '-' : Math.round(R.acceptation.taux*100) + ' %';
+  const nDocs = R.devis.n + R.factures.n;
+  const moy = nDocs ? Math.round((R.devis.montant + R.factures.montant) / nDocs) : 0;
+  const P = R.prec, vs = escapeHtml(P.label);
+  const kpi = (cls, t, v, s, vr)=>`<div class="rpx-kpi ${cls}"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s}</div>${vr ? `<div class="vr">${vr} vs ${vs}</div>` : ''}</div>`;
+  const kpis = `<div class="rpx-kpis">
+    ${kpi('', 'Devis', R.devis.n, fcfa(R.devis.montant), variationTexte(R.devis.montant, P.devisM))}
+    ${kpi('', 'Factures', R.factures.n, fcfa(R.factures.montant), variationTexte(R.factures.montant, P.facM))}
+    ${kpi('vert', 'Encaissé', fcfa(R.encaisse.montant), R.encaisse.n + ' facture(s) payée(s)', variationTexte(R.encaisse.montant, P.enc))}
+    ${kpi('amb', 'À encaisser', fcfa(R.aEncaisser.montant), R.aEncaisser.n + ' facture(s) envoyée(s) / impayée(s)', '')}
+    ${kpi('', "Taux d'acceptation", tauxTxt, R.acceptation.acceptes + ' accepté(s) · ' + R.acceptation.refuses + ' refusé(s)', '')}
+    ${kpi('', 'Montant moyen', fcfa(moy), 'par document', '')}
+  </div>`;
+
+  const maxS = Math.max(1, ...R.annee12.map(s=>Math.max(s.devis, s.factures)));
+  const selI = et.mode === 'mois' ? parseInt(et.mois,10)-1 : -1;
+  const chart = `<div class="rpx-sec"><h3>Évolution ${escapeHtml(et.annee)} — mois par mois</h3>
+    <div class="rpx-chart" role="img" aria-label="Montants des devis et des factures par mois">
+    ${R.annee12.map((s,i)=>`<div class="rpx-col ${i===selI?'sel':''}" title="${s.label} : devis ${escapeHtml(fcfa(s.devis))} · factures ${escapeHtml(fcfa(s.factures))}"><span class="d" style="height:${Math.round(s.devis/maxS*100)}%"></span><span class="f" style="height:${Math.round(s.factures/maxS*100)}%"></span></div>`).join('')}
+    </div>
+    <div class="rpx-lab">${R.annee12.map((s,i)=>`<span class="${i===selI?'sel':''}">${s.label.replace('.','')}</span>`).join('')}</div>
+    <div class="rp-leg"><span><b style="background:var(--navy)"></b>Devis</span><span><b style="background:var(--amber)"></b>Factures</span></div></div>`;
+
+  const tabSt = (titre, bloc, type)=>{
+    const rows = STATUTS_ORDRE.map(s=>{ const o = bloc.parStatut[s]; return `<tr><td><span class="rpx-pill ${s}">${escapeHtml(statutLabel(s,type))}</span></td><td class="n">${o.n}</td><td class="n">${fcfa(o.m)}</td><td class="n">${bloc.n ? Math.round(o.n/bloc.n*100) : 0} %</td></tr>`; }).join('');
+    return `<div class="rpx-sec"><h3>${titre}</h3><table class="rpx-tab"><tr><th>Statut</th><th class="n">Nb</th><th class="n">Montant</th><th class="n">Part</th></tr>${rows}
+      <tr class="rpx-tot"><td>Total</td><td class="n">${bloc.n}</td><td class="n">${fcfa(bloc.montant)}</td><td class="n">${bloc.n ? '100 %' : '-'}</td></tr></table></div>`;
+  };
+
+  const parEnt = tout ? `<div class="rpx-sec"><h3>Par entreprise</h3><div class="rpx-scr"><table class="rpx-tab"><tr><th>Entreprise</th><th class="n">Devis</th><th class="n">Factures</th><th class="n">Encaissé</th><th class="n">Accept.</th></tr>
+    ${R.parEntreprise.map(l=>{ const dec = l.acc + l.ref; return `<tr><td><b>${escapeHtml(l.nom)}</b></td><td class="n">${l.dn}<small>${fcfa(l.dm)}</small></td><td class="n">${l.fn}<small>${fcfa(l.fm)}</small></td><td class="n">${fcfa(l.enc)}</td><td class="n">${dec ? Math.round(l.acc/dec*100)+' %' : '-'}</td></tr>`; }).join('')}</table></div></div>` : '';
+
+  const nbCl = imp ? 25 : 15;
+  const dtC = t=>{ if(!t) return '-'; return new Date(t).toLocaleDateString('fr-FR'); };
+  const clients = `<div class="rpx-sec"><h3>Interactions par client</h3>${R.clients.length ? `<div class="rpx-scr"><table class="rpx-tab"><tr><th>Client</th><th class="n">Documents</th><th class="n">Montant</th><th class="n">Acceptés / payés</th><th class="n">Dernière interaction</th></tr>
+    ${R.clients.slice(0,nbCl).map(c=>`<tr><td><b>${escapeHtml(c.nom)}</b>${c.tel ? '<small>'+escapeHtml(c.tel)+'</small>' : ''}</td><td class="n">${c.dn + c.fn}<small>${c.dn} devis · ${c.fn} fact.</small></td><td class="n">${fcfa(c.dm + c.fm)}</td><td class="n">${c.acc} / ${c.pay}</td><td class="n">${dtC(c.dernier)}</td></tr>`).join('')}</table></div>
+    ${R.clients.length>nbCl ? `<div class="rp-note">+ ${R.clients.length-nbCl} autre(s) client(s)</div>` : ''}` : '<div class="rp-vide">Aucun client sur cette période.</div>'}</div>`;
+
+  const nbE = imp ? 40 : (rapportEtat && rapportEtat.plus ? 400 : 40);
+  const evs = R.interactions.evenements.slice(0, nbE).map(e=>{
+    const d = e.d, nature = d.type === 'facture' ? 'Facture' : 'Devis', dt = new Date(e.t);
+    let a;
+    if(e.a === 'cree') a = nature + ' créé' + (d.type === 'facture' ? 'e' : '');
+    else if(e.a === 'pdf') a = 'Envoyé (PDF)';
+    else if(e.a === 'email') a = 'Envoyé par e-mail';
+    else if(e.a === 'impression') a = 'Imprimé' + (d.type === 'facture' ? 'e' : '');
+    else a = 'Statut → ' + statutLabel(e.v, d.type);
+    const ent = tout ? (entreprises.find(x=>x.id===d.entrepriseId)||{}).nom : '';
+    return `<div class="rpx-act"><div class="dt">${dt.toLocaleDateString('fr-FR')}</div><div class="tx"><b>${escapeHtml(d.numero||'')}</b> — ${escapeHtml(((d.client&&d.client.nom)||'').trim() || 'Client sans nom')} · ${escapeHtml(a)}${ent ? '<span class="rpx-tag">'+escapeHtml(ent)+'</span>' : ''}</div></div>`;
+  }).join('');
+  const plus = !imp && R.interactions.evenements.length > nbE ? `<button class="btn btn-ghost" id="rpPlus" style="margin-top:8px;width:100%;">Afficher plus (${R.interactions.evenements.length - nbE})</button>` : '';
+  const activite = `<div class="rpx-sec"><h3>Activité de la période (${R.interactions.total})</h3>${evs || '<div class="rp-vide">Aucune interaction sur cette période.</div>'}${plus}
+    <div class="rp-note">Le journal des interactions est enregistré depuis la version 2.3 : pour les documents plus anciens, seule la création est connue.</div></div>`;
+
+  const sommeRel = l=>l.reduce((s,x)=>s+x.montant,0);
+  const ligneRel = (x, sit)=>`<tr ${imp?'':`class="rp-clic" data-doc="${escapeHtml(x.id)}"`}><td><b>${escapeHtml(x.numero)}</b><small>${escapeHtml(x.client)}${tout && x.ent ? ' · '+escapeHtml(x.ent) : ''}</small></td><td class="n">${fcfa(x.montant)}</td><td class="n">${sit}</td></tr>`;
+  const relDev = R.relances.devis.length ? `<table class="rpx-tab"><tr><th>Devis</th><th class="n">Montant</th><th class="n">Situation</th></tr>${R.relances.devis.slice(0,10).map(x=>ligneRel(x, 'envoyé depuis ' + x.depuis + ' j' + (x.expire ? '<small style="color:var(--danger)">⚠ validité dépassée</small>' : ''))).join('')}</table>${R.relances.devis.length>10 ? `<div class="rp-note">+ ${R.relances.devis.length-10} autre(s)</div>` : ''}` : '<div class="rp-vide">Aucun devis en attente de réponse.</div>';
+  const relFac = R.relances.factures.length ? `<table class="rpx-tab"><tr><th>Facture</th><th class="n">Montant</th><th class="n">Échéance</th></tr>${R.relances.factures.slice(0,10).map(x=>ligneRel(x, (x.retard > 0 ? '<b style="color:var(--danger)">⚠ retard ' + x.retard + ' j</b>' : (x.retard === 0 ? "aujourd'hui" : 'dans ' + (-x.retard) + ' j')) + (x.impayee ? '<small>impayée</small>' : ''))).join('')}</table>${R.relances.factures.length>10 ? `<div class="rp-note">+ ${R.relances.factures.length-10} autre(s)</div>` : ''}` : '<div class="rp-vide">Aucune facture en attente de paiement.</div>';
+  const relances = `<div class="rpx-cols">
+    <div class="rpx-sec"><h3>À relancer — devis sans réponse (${R.relances.devis.length} · ${fcfa(sommeRel(R.relances.devis))})</h3>${relDev}</div>
+    <div class="rpx-sec"><h3>À relancer — factures à encaisser (${R.relances.factures.length} · ${fcfa(sommeRel(R.relances.factures))})</h3>${relFac}</div></div>`;
+
+  return kpis + chart + `<div class="rpx-cols">${tabSt('Statut des devis', R.devis, 'devis')}${tabSt('Statut des factures', R.factures, 'facture')}</div>` + parEnt + clients + relances + activite;
+}
+
+function imprimerRapport(){
+  if(window.__verrouille || etatLicence()==='expire') return;
+  injecterStyleRapports(); injecterStyleRapports2();
+  const R = calculerRapport(rapportEtat), et = rapportEtat;
+  const ent = et.ent === '*' ? null : (entreprises.find(e=>e.id===et.ent) || entreprise);
+  const precedente = entreprise;
+  if(ent){ entreprise = ent; appliquerTheme(ent.theme || 'navy'); }
+  const p = document.getElementById('printArea');
+  p.className = 'rpx-doc';
+  p.innerHTML = `<div class="rpx-head"><div class="a">${escapeHtml(ent ? (ent.nom || 'Votre entreprise') : 'Toutes les entreprises')}</div>
+    <div class="b"><b>RAPPORT ${et.mode === 'annee' ? 'ANNUEL' : 'MENSUEL'}</b>${escapeHtml(et.mode === 'annee' ? et.annee : MOIS_NOMS[parseInt(et.mois,10)-1] + ' ' + et.annee)} · Édité le ${escapeHtml(frDate(todayISO()))}</div></div>` + htmlRapport(R, true);
+  const fin = ()=>{ p.className = ''; p.innerHTML = ''; entreprise = precedente; appliquerTheme(entreprise.theme || 'navy'); };
+  setTimeout(()=>{ try{ triggerPrint(); }finally{ setTimeout(fin, 1500); } }, 80);
+}
+
 function renderRapports(){
-  injecterStyleRapports(); initRapportEtat();
+  injecterStyleRapports(); injecterStyleRapports2(); initRapportEtat();
   const m = document.getElementById('main');
   const et = rapportEtat;
   let R;
@@ -3873,36 +4018,11 @@ function renderRapports(){
   const listeAnnees = Array.from(annees).sort((a,b)=>b-a);
   const optEnt = (entreprises.length > 1 ? `<option value="*" ${et.ent==='*'?'selected':''}>Toutes les entreprises</option>` : '') +
     entreprises.map(e=>`<option value="${escapeHtml(e.id)}" ${e.id===et.ent?'selected':''}>${escapeHtml(e.nom)||'(sans nom)'}</option>`).join('');
-  const maxSerie = Math.max(1, ...R.series.map(s=>Math.max(s.devis, s.factures)));
   const aDesDonnees = R.devis.n + R.factures.n + R.encaisse.n + R.interactions.total > 0;
-  const tauxTxt = R.acceptation.taux === null ? '-' : Math.round(R.acceptation.taux*100) + ' %';
-  const ligneStatut = (lbl, o, tot, type)=>`<tr><td>${lbl}<div class="rp-bar"><i style="width:${tot ? Math.round(o.n/tot*100) : 0}%"></i></div></td><td class="n">${o.n}</td><td class="n">${fcfa(o.m)}</td></tr>`;
-  const tabStatuts = (titre, bloc, type)=>`
-    <div class="rp-h">${titre}</div>
-    <table class="rp-table"><tr><th>Statut</th><th class="n">Nb</th><th class="n">Montant</th></tr>
-    ${STATUTS_ORDRE.map(s=>ligneStatut(statutLabel(s, type), bloc.parStatut[s], bloc.n, type)).join('')}</table>`;
-  const chips = ['cree','pdf','email','impression','statut'].filter(k=>R.interactions.parType[k]).map(k=>`<span class="rp-chip">${ICONES_ACTION[k]} ${R.interactions.parType[k]} · ${LIBELLES_ACTION[k]}</span>`).join('');
-  const evts = R.interactions.evenements.slice(0, 40).map(e=>{
-    const x = texteEvenement(e), dt = new Date(e.t);
-    return `<div class="rp-evt"><div class="i">${ICONES_ACTION[e.a]||'•'}</div><div><div class="q">${escapeHtml(x.quoi)}</div><div class="m">${escapeHtml(x.doc)} · ${dt.toLocaleDateString('fr-FR')} ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div></div></div>`;
-  }).join('');
-
-  const ligneRel = (x, texteSit, etoile)=>`<tr class="rp-clic" data-doc="${escapeHtml(x.id)}"><td><b>${escapeHtml(x.numero)}</b><br>${escapeHtml(x.client)}${et.ent==='*' && x.ent ? '<br><small>'+escapeHtml(x.ent)+'</small>' : ''}</td><td class="n">${fcfa(x.montant)}</td><td class="n">${texteSit}</td></tr>`;
-  const sommeRel = l=>l.reduce((s,x)=>s+x.montant,0);
-  const blocRelances = `
-    <div class="rp-h">À relancer</div>
-    <div class="rp-sous">Devis envoyés sans réponse (${R.relances.devis.length} · ${fcfa(sommeRel(R.relances.devis))})</div>
-    ${R.relances.devis.length ? `<div class="rp-scroll"><table class="rp-table"><tr><th>Devis</th><th class="n">Montant</th><th class="n">Situation</th></tr>
-      ${R.relances.devis.slice(0,10).map(x=>ligneRel(x, 'envoyé depuis ' + x.depuis + ' j' + (x.expire ? '<br><b style="color:var(--danger)">⚠ validité dépassée</b>' : ''))).join('')}</table></div>
-      ${R.relances.devis.length>10 ? `<div class="rp-note">+ ${R.relances.devis.length-10} autre(s)</div>` : ''}` : '<div class="rp-vide">Aucun devis en attente de réponse.</div>'}
-    <div class="rp-sous">Factures à encaisser (${R.relances.factures.length} · ${fcfa(sommeRel(R.relances.factures))})</div>
-    ${R.relances.factures.length ? `<div class="rp-scroll"><table class="rp-table"><tr><th>Facture</th><th class="n">Montant</th><th class="n">Échéance</th></tr>
-      ${R.relances.factures.slice(0,10).map(x=>ligneRel(x, (x.retard > 0 ? '<b style="color:var(--danger)">⚠ en retard de ' + x.retard + ' j</b>' : (x.retard === 0 ? "échéance aujourd'hui" : 'dans ' + (-x.retard) + ' j')) + (x.impayee ? '<br><small>marquée impayée</small>' : ''))).join('')}</table></div>
-      ${R.relances.factures.length>10 ? `<div class="rp-note">+ ${R.relances.factures.length-10} autre(s)</div>` : ''}` : '<div class="rp-vide">Aucune facture en attente de paiement.</div>'}
-    <div class="rp-note">Touchez une ligne pour ouvrir le document.</div>`;
 
   m.innerHTML = `
-    <div class="card">
+    <div class="rpx-sec">
+      <h3>📊 Rapports</h3>
       <div class="rp-ctrl">
         <select id="rpEnt" aria-label="Entreprise">${optEnt}</select>
         <div class="rp-seg"><button data-mode="mois" class="${et.mode==='mois'?'actif':''}">Mensuel</button><button data-mode="annee" class="${et.mode==='annee'?'actif':''}">Annuel</button></div>
@@ -3913,61 +4033,24 @@ function renderRapports(){
           <button id="rpSuiv" aria-label="Période suivante">▶</button>
         </div>
       </div>
-      <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:10px;">${escapeHtml(titreRapport(et))}</div>
-
-      <div class="rp-kpis">
-        <div class="rp-kpi"><div class="t">Devis émis</div><div class="v">${R.devis.n}</div><div class="s">${fcfa(R.devis.montant)}</div><div class="s rp-var">${variationTexte(R.devis.montant, R.prec.devisM)} vs ${escapeHtml(R.prec.label)}</div></div>
-        <div class="rp-kpi"><div class="t">Factures émises</div><div class="v">${R.factures.n}</div><div class="s">${fcfa(R.factures.montant)}</div><div class="s rp-var">${variationTexte(R.factures.montant, R.prec.facM)} vs ${escapeHtml(R.prec.label)}</div></div>
-        <div class="rp-kpi"><div class="t">Encaissé</div><div class="v">${fcfa(R.encaisse.montant)}</div><div class="s">${R.encaisse.n} facture(s) payée(s)</div><div class="s rp-var">${variationTexte(R.encaisse.montant, R.prec.enc)} vs ${escapeHtml(R.prec.label)}</div></div>
-        <div class="rp-kpi"><div class="t">Reste à encaisser</div><div class="v">${fcfa(R.aEncaisser.montant)}</div><div class="s">${R.aEncaisser.n} facture(s) · toutes périodes</div></div>
-        <div class="rp-kpi" style="grid-column:1 / -1;"><div class="t">Taux d'acceptation des devis</div><div class="v">${tauxTxt}</div><div class="s">${R.acceptation.acceptes} accepté(s) · ${R.acceptation.refuses} refusé(s) · ${R.acceptation.attente} en attente</div></div>
+      <div style="font-size:15px;font-weight:800;color:var(--navy);">${escapeHtml(titreRapport(et))}${et.ent==='*' ? ' — toutes les entreprises' : ''}</div>
+      <div class="rpx-btns">
+        <button class="btn btn-primary" id="rpImp">🖨️ Imprimer / PDF du rapport</button>
+        <button class="btn btn-ghost" id="rpPdf">📤 Envoyer en PDF</button>
       </div>
-
-      ${aDesDonnees ? '' : '<div class="rp-vide">Aucune activité sur cette période.</div>'}
-
-      ${blocRelances}
-
-      ${et.ent === '*' ? `
-        <div class="rp-h">Par entreprise</div>
-        <div class="rp-scroll"><table class="rp-table"><tr><th>Entreprise</th><th class="n">Devis</th><th class="n">Factures</th><th class="n">Encaissé</th></tr>
-        ${R.parEntreprise.map(l=>`<tr><td>${escapeHtml(l.nom)}</td><td class="n">${l.dn}<br><small>${fcfa(l.dm)}</small></td><td class="n">${l.fn}<br><small>${fcfa(l.fm)}</small></td><td class="n">${fcfa(l.enc)}</td></tr>`).join('')}</table></div>` : ''}
-
-      ${tabStatuts('Statut des devis', R.devis, 'devis')}
-      ${tabStatuts('Statut des factures', R.factures, 'facture')}
-
-      <div class="rp-h">${et.mode==='annee' ? 'Évolution mois par mois' : 'Évolution jour par jour'}</div>
-      <div class="rp-leg"><span><b style="background:var(--navy)"></b>Devis</span><span><b style="background:var(--amber)"></b>Factures</span></div>
-      <div class="rp-chart" role="img" aria-label="Montants des devis et des factures par ${et.mode==='annee'?'mois':'jour'}">
-        ${R.series.map(s=>`<div class="rp-col" title="${escapeHtml(s.label)} : devis ${fcfa(s.devis)} · factures ${fcfa(s.factures)}"><span class="d" style="height:${Math.round(s.devis/maxSerie*100)}%"></span><span class="f" style="height:${Math.round(s.factures/maxSerie*100)}%"></span></div>`).join('')}
-      </div>
-      <div class="rp-labels">${R.series.map((s,i)=>`<span>${(et.mode==='annee' || i%5===0 || i===R.series.length-1) ? s.label : ''}</span>`).join('')}</div>
-      ${et.mode==='annee' ? `
-        <div class="rp-scroll" style="margin-top:8px;"><table class="rp-table"><tr><th>Mois</th><th class="n">Devis</th><th class="n">Factures</th><th class="n">Encaissé</th></tr>
-        ${R.series.map(s=>`<tr><td>${s.label}</td><td class="n">${s.nDevis} · ${fcfa(s.devis)}</td><td class="n">${s.nFactures} · ${fcfa(s.factures)}</td><td class="n">${fcfa(s.encaisse)}</td></tr>`).join('')}</table></div>` : ''}
-
-      <div class="rp-h">Clients de la période</div>
-      ${R.clients.length ? `<div class="rp-scroll"><table class="rp-table"><tr><th>Client</th><th class="n">Devis</th><th class="n">Factures</th></tr>
-        ${R.clients.slice(0,10).map(c=>`<tr><td>${escapeHtml(c.nom)}</td><td class="n">${c.dn} · ${fcfa(c.dm)}</td><td class="n">${c.fn} · ${fcfa(c.fm)}</td></tr>`).join('')}</table></div>
-        ${R.clients.length>10 ? `<div class="rp-note">+ ${R.clients.length-10} autre(s) client(s)</div>` : ''}` : '<div class="rp-vide">Aucun client sur cette période.</div>'}
-
-      <div class="rp-h">Interactions (${R.interactions.total})</div>
-      ${chips ? `<div class="rp-chips">${chips}</div>` : ''}
-      ${evts || '<div class="rp-vide">Aucune interaction sur cette période.</div>'}
-      ${R.interactions.evenements.length > 40 ? `<div class="rp-note">Les 40 plus récentes sur ${R.interactions.evenements.length}.</div>` : ''}
-      <div class="rp-note">Le journal des interactions est enregistré à partir de cette version : pour les documents plus anciens, seule la création est connue.</div>
-
-      <div class="rp-actions">
-        <button class="btn btn-primary" id="rpPdf">📄 Exporter ce rapport en PDF</button>
-      </div>
-    </div>`;
+    </div>
+    ${aDesDonnees ? '' : '<div class="rpx-sec"><div class="rp-vide">Aucune activité sur cette période.</div></div>'}
+    ${htmlRapport(R, false)}`;
 
   m.querySelectorAll('[data-doc]').forEach(tr=>tr.addEventListener('click', ()=>ouvrirDocDepuisRapport(tr.dataset.doc)));
-  const maj = ()=>renderRapports();
-  m.querySelector('#rpEnt').addEventListener('change', e=>{ rapportEtat.ent = e.target.value; maj(); });
-  m.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{ rapportEtat.mode = b.dataset.mode; maj(); }));
-  const sm = m.querySelector('#rpMois'); if(sm) sm.addEventListener('change', e=>{ rapportEtat.mois = e.target.value; maj(); });
-  m.querySelector('#rpAnnee').addEventListener('change', e=>{ rapportEtat.annee = e.target.value; maj(); });
+  const maj = ()=>{ const y = window.scrollY; renderRapports(); window.scrollTo(0, y); };
+  const pl = m.querySelector('#rpPlus'); if(pl) pl.addEventListener('click', ()=>{ rapportEtat.plus = true; maj(); });
+  m.querySelector('#rpEnt').addEventListener('change', e=>{ rapportEtat.ent = e.target.value; rapportEtat.plus = false; maj(); });
+  m.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{ rapportEtat.mode = b.dataset.mode; rapportEtat.plus = false; maj(); }));
+  const sm = m.querySelector('#rpMois'); if(sm) sm.addEventListener('change', e=>{ rapportEtat.mois = e.target.value; rapportEtat.plus = false; maj(); });
+  m.querySelector('#rpAnnee').addEventListener('change', e=>{ rapportEtat.annee = e.target.value; rapportEtat.plus = false; maj(); });
   const deplacer = (sens)=>{
+    rapportEtat.plus = false;
     if(rapportEtat.mode === 'annee'){ rapportEtat.annee = String(parseInt(rapportEtat.annee,10) + sens); }
     else {
       let mo = parseInt(rapportEtat.mois,10) + sens, an = parseInt(rapportEtat.annee,10);
@@ -3978,6 +4061,7 @@ function renderRapports(){
   };
   m.querySelector('#rpPrec').addEventListener('click', ()=>deplacer(-1));
   m.querySelector('#rpSuiv').addEventListener('click', ()=>deplacer(1));
+  m.querySelector('#rpImp').addEventListener('click', imprimerRapport);
   m.querySelector('#rpPdf').addEventListener('click', async (ev)=>{
     const btn = ev.currentTarget; btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Création du PDF…';
     try{
@@ -4027,7 +4111,7 @@ async function genererPdfRapport(R){
     ['Devis émis', R.devis.n + ' - ' + F(R.devis.montant), P.devisN + ' - ' + F(P.devisM), variationTexte(R.devis.montant, P.devisM).replace('▲ ','').replace('▼ ','')],
     ['Factures émises', R.factures.n + ' - ' + F(R.factures.montant), P.facN + ' - ' + F(P.facM), variationTexte(R.factures.montant, P.facM).replace('▲ ','').replace('▼ ','')],
     ['Encaissé', F(R.encaisse.montant) + ' (' + R.encaisse.n + ' facture(s))', F(P.enc), variationTexte(R.encaisse.montant, P.enc).replace('▲ ','').replace('▼ ','')],
-    ['Reste à encaisser (toutes périodes)', F(R.aEncaisser.montant) + ' (' + R.aEncaisser.n + ' facture(s))', '-', '-'],
+    ['À encaisser (factures de la période envoyées / impayées)', F(R.aEncaisser.montant) + ' (' + R.aEncaisser.n + ' facture(s))', '-', '-'],
     ["Taux d'acceptation des devis", tauxTxt + ' (' + R.acceptation.acceptes + ' accepté(s), ' + R.acceptation.refuses + ' refusé(s), ' + R.acceptation.attente + ' en attente)', '-', '-']
   ], { columnStyles:{ 1:{ halign:'right' }, 2:{ halign:'right' }, 3:{ halign:'right' } } });
   if(et.ent === '*'){
@@ -4050,8 +4134,8 @@ async function genererPdfRapport(R){
       R.series.map(s=>[s.label, s.nDevis + ' - ' + F(s.devis), s.nFactures + ' - ' + F(s.factures), F(s.encaisse)]), { columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'} } });
   }
   if(R.clients.length){
-    tableau('Clients de la période', ['Client','Devis','Factures'],
-      R.clients.slice(0,15).map(c=>[c.nom, c.dn + ' - ' + F(c.dm), c.fn + ' - ' + F(c.fm)]), { columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'} } });
+    tableau('Interactions par client', ['Client','Documents','Montant','Acceptés / payés','Dernière'],
+      R.clients.slice(0,25).map(c=>[c.nom + (c.tel ? ' (' + c.tel + ')' : ''), (c.dn + c.fn) + ' (' + c.dn + ' devis, ' + c.fn + ' fact.)', F(c.dm + c.fm), c.acc + ' / ' + c.pay, c.dernier ? new Date(c.dernier).toLocaleDateString('fr-FR') : '-']), { columnStyles:{ 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right'} } });
   }
   const resume = ['cree','pdf','email','impression','statut'].filter(k=>R.interactions.parType[k]).map(k=>LIBELLES_ACTION[k] + ' : ' + R.interactions.parType[k]).join('  |  ');
   tableau('Interactions (' + R.interactions.total + ')', ['Date','Événement','Document'],
